@@ -54,9 +54,7 @@ class LocationCollector {
 
     // Take immediate high-accuracy reading
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      final position = await Geolocator.getCurrentPosition();
       await _processPosition(position, 'APP_OPEN');
       await _flushQueue();
     } catch (_) {}
@@ -64,7 +62,7 @@ class LocationCollector {
     // Start continuous position stream
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.balanced,
+        accuracy: LocationAccuracy.medium,
         distanceFilter: 50,
         timeLimit: Duration(minutes: 15),
       ),

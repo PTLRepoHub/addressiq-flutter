@@ -81,7 +81,7 @@ class _SampleHomeState extends State<SampleHome> {
 
   Future<void> _startPhysical(String provider) async {
     try {
-      final res = await AddressIQ.instance.startPhysical(StartPhysicalArgs(
+      final res = await AddressIQ.instance.startPhysicalVerification(StartPhysicalArgs(
         locationCode: _locationCode,
         provider: provider,
       ));
