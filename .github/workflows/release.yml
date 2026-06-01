@@ -1,0 +1,43 @@
+name: Release
+
+# Publishes addressiq_sdk to pub.dev. Push a tag `vX.Y.Z` to release at that
+# version, or run manually (dry-run by default).
+#
+# Auth: pub.dev OIDC trusted publishing — configure this repo as a trusted
+# publisher on pub.dev (no secret needed).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (validate packaging, publish nothing)"
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    name: Publish to pub.dev
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for pub.dev OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Set version from tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            sed -i "s/^version: .*/version: ${GITHUB_REF_NAME#v}/" pubspec.yaml
+          fi
+      - run: flutter pub get
+      - name: Publish
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            dart pub publish --force
+          else
+            dart pub publish --dry-run
+          fi
