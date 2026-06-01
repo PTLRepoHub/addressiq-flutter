@@ -57,7 +57,7 @@ class AddressIQApi {
 
   /// Send location events to ingest.
   Future<void> sendEvents(String locationId, List<LocationEvent> events) async {
-    final payload = events.map((e) => {
+    final payload = events.map((e) {
       final json = e.toJson();
       json['locationId'] = locationId;
       return json;

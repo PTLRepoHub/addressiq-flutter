@@ -35,7 +35,7 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
   Future<void> _useCurrentLocation() async {
     setState(() => _loading = true);
     try {
-      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+      final pos = await Geolocator.getCurrentPosition();
       setState(() {
         _lat = pos.latitude;
         _lon = pos.longitude;

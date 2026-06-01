@@ -11,7 +11,9 @@ export 'src/domain/entities.dart';
 
 // Legacy — kept until partners migrate to AddressIQ.instance.
 export 'src/api/addressiq_api.dart';
-export 'src/api/models.dart';
+// `AddressIQConfig` is also (canonically) defined in lifecycle/addressiq.dart;
+// hide the legacy duplicate here to avoid an ambiguous export.
+export 'src/api/models.dart' hide AddressIQConfig;
 export 'src/location/location_collector.dart';
 export 'src/ui/addressiq_verify.dart';
 export 'src/ui/theme.dart';
