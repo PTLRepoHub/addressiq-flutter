@@ -1,0 +1,30 @@
+name: proto-sync
+
+# Regenerates Dart bindings from the live wire contract
+# (PTLRepoHub/AddressIq-proto) and fails if the committed code has drifted.
+# --include-wkt is required because Dart has no runtime library for the
+# google.protobuf well-known types — they must be generated locally.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  proto-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: buf generate --include-imports --include-wkt
+      - name: Verify committed bindings match the contract
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated proto bindings are stale. Run 'buf generate --include-imports --include-wkt' and commit the result." >&2
+            exit 1
+          fi

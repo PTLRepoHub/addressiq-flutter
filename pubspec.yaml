@@ -14,6 +14,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Runtime for the generated wire-contract bindings under lib/src/proto
+  # (source of truth: PTLRepoHub/AddressIq-proto).
+  protobuf: ^3.1.0
+  fixnum: ^1.1.0
   http: ^1.2.0
   shared_preferences: ^2.2.0
   geolocator: ^12.0.0
