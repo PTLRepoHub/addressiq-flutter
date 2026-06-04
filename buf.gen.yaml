@@ -1,0 +1,11 @@
+version: v2
+# Wire contract source — see PTLRepoHub/AddressIq-proto. Swap to
+#   inputs: [ { module: buf.build/addressiq/addressiq } ]
+# once the BSR module is published.
+inputs:
+  - git_repo: https://github.com/PTLRepoHub/AddressIq-proto.git
+    branch: main
+plugins:
+  # Dart bindings (depend on package:protobuf, declared in pubspec.yaml).
+  - remote: buf.build/protocolbuffers/dart:v21.1.2
+    out: lib/src/proto
