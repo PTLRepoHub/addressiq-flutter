@@ -34,15 +34,21 @@ class AddressIQApi {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  /// Submit address for verification.
-  Future<VerifyResult> submitAddress(AddressData address) async {
+  /// Collect the address (collect-only). Creates the Location and returns its
+  /// `locationCode`; does NOT start a verification — the host owns that.
+  Future<CollectResult> collectAddress(AddressData address) async {
     final res = await http.post(
-      Uri.parse('$apiUrl/api/v1/widget/submit'),
-      headers: _sessionHeaders,
+      Uri.parse('$apiUrl/api/v1/widget/collect'),
+      headers: {
+        ..._sessionHeaders,
+        // The backend rejects state-creating POSTs without an idempotency key.
+        'Idempotency-Key':
+            'iqidem_flutter_widget_collect_${DateTime.now().microsecondsSinceEpoch}',
+      },
       body: jsonEncode(address.toJson()),
     );
     _checkResponse(res);
-    return VerifyResult.fromJson(jsonDecode(res.body));
+    return CollectResult.fromJson(jsonDecode(res.body));
   }
 
   /// Get verification status.

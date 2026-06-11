@@ -8,11 +8,15 @@
 // Mirrors the RN SDK 1:1 at the public-method level:
 //   initialize → setUser → startPhysical/startCombined → pause/resume/sync/logout/reset
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../api/addressiq_api.dart';
 import '../data/api_client.dart';
 import '../data/verification_repository.dart';
 import '../domain/entities.dart';
+import '../location/collection_starter.dart';
+import '../location/location_collector.dart';
 
 export '../domain/entities.dart';
 
@@ -75,6 +79,7 @@ class AddressIQ {
   DateTime? _pausedAt;
 
   VerificationRepository? _repository;
+  LocationCollector? _collector;
 
   // ─── Initialization + identity ──────────────────────────────────────────
 
@@ -108,6 +113,17 @@ class AddressIQ {
   }
 
   // ─── Verification surface ───────────────────────────────────────────────
+
+  /// Start a digital address verification. Uses SDK telemetry +
+  /// geofencing to score residency at the given location. Hits
+  /// `POST /api/v1/locations/{locationCode}/verifications/digital` with
+  /// `{"digitalProvider": provider ?? 'internal_ai'}`.
+  Future<Map<String, dynamic>> startVerification(
+    StartVerificationArgs args,
+  ) async {
+    final repo = _requireInitialized();
+    return _runStart(() => repo.startDigital(args), args.locationCode);
+  }
 
   /// Start a physical address verification. A partner-provided agent
   /// or KYC provider visits the address to confirm residency.
@@ -151,6 +167,11 @@ class AddressIQ {
 
   Future<void> pauseVerification() async {
     if (_state != SdkLifecycleState.collecting) return;
+    try {
+      await _collector?.stop();
+    } catch (_) {
+      // best-effort
+    }
     _pausedAt = DateTime.now();
     _state = SdkLifecycleState.paused;
   }
@@ -163,6 +184,7 @@ class AddressIQ {
         'resumeVerification: no active session to resume',
       );
     }
+    await _beginCollection(_activeLocationCode!, _activeVerificationId!);
     _pausedAt = null;
     _state = SdkLifecycleState.collecting;
   }
@@ -184,6 +206,7 @@ class AddressIQ {
         // best-effort
       }
     }
+    _collector = null;
     _user = null;
     _activeVerificationId = null;
     _activeLocationCode = null;
@@ -192,6 +215,12 @@ class AddressIQ {
   }
 
   Future<void> reset() async {
+    try {
+      await _collector?.stop();
+    } catch (_) {
+      // best-effort
+    }
+    _collector = null;
     _user = null;
     _activeVerificationId = null;
     _activeLocationCode = null;
@@ -368,15 +397,59 @@ class AddressIQ {
     Future<Map<String, dynamic>> Function() runner,
     String locationCode,
   ) async {
+    // PERMISSION_DENIED gate (contract §0/§4): the SDK owns every step
+    // after the host triggers a start, including refusing to start when
+    // location permission is not granted both in foreground and
+    // background. Mirrors the RN `assertReadyForVerificationStart` gate.
+    final permissions = await getPermissionState();
+    if (permissions['foregroundLocation'] != 'GRANTED' ||
+        permissions['backgroundLocation'] != 'GRANTED') {
+      throw AddressIQException(
+        'PERMISSION_DENIED',
+        'Foreground and background location permissions are required before starting verification',
+      );
+    }
+
     try {
       final res = await runner();
       final code = res['verificationCode']?.toString();
       if (code != null) {
         markActiveSession(locationCode, code);
+        // Begin OS-level collection (geofence + background + telemetry
+        // flush) via the shared helper the Collect UI widget uses too.
+        // Best-effort: never fails the start.
+        await _beginCollection(locationCode, code);
       }
       return res;
     } on SdkError catch (e) {
       throw AddressIQException(e.code, e.message);
+    }
+  }
+
+  /// Shared collection wiring used by the imperative start* path. Builds
+  /// a data-plane [AddressIQApi] from the active config (event ingest is
+  /// authenticated with `x-api-key`, so no widget session token is
+  /// needed) and starts background collection keyed on the public codes.
+  Future<void> _beginCollection(
+    String locationCode,
+    String verificationCode,
+  ) async {
+    final config = _config;
+    if (config == null) return;
+    try {
+      final api = AddressIQApi(
+        apiUrl: config.resolvedApiUrl,
+        apiKey: config.apiKey,
+        sessionToken: '',
+      );
+      _collector = await startCollectionForVerification(
+        api: api,
+        locationCode: locationCode,
+        verificationCode: verificationCode,
+      );
+    } catch (e) {
+      // Best-effort — a failure to begin collection must not fail the start.
+      debugPrint('[AddressIQSDK] _beginCollection failed: $e');
     }
   }
 }

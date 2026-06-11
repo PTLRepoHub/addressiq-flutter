@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/addressiq_api.dart';
 import '../api/models.dart';
-import '../location/location_collector.dart';
 import 'theme.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/address_search_screen.dart';
@@ -30,7 +29,9 @@ enum _Screen { welcome, addressSearch, mapPin, propertyDetails, photoCapture, co
 class AddressIQVerify extends StatefulWidget {
   final AddressIQConfig config;
   final AddressIQTheme theme;
-  final void Function(VerifyResult result)? onComplete;
+  /// Called when the address is **collected**. The widget does NOT start a
+  /// verification — call `AddressIQ.instance.startVerification(...)` here.
+  final void Function(CollectResult result)? onComplete;
   final VoidCallback? onCancel;
   final void Function(Object error)? onError;
   final AddressData? initialAddress;
@@ -54,7 +55,7 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
   late AddressData _address;
   late AddressIQApi _api;
   bool _submitting = false;
-  VerifyResult? _result;
+  CollectResult? _result;
 
   @override
   void initState() {
@@ -75,21 +76,11 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
       // 1. Init session
       await _api.initSession();
 
-      // 2. Submit address
-      final result = await _api.submitAddress(_address);
+      // 2. Collect the address (collect-only — no verification started here).
+      //    The host owns verification: it calls startVerification(locationCode)
+      //    from onComplete. Collection (geofence + background) wires on verify.
+      final result = await _api.collectAddress(_address);
       _result = result;
-
-      // 3. Start background location collection
-      try {
-        final collector = LocationCollector(
-          api: _api,
-          locationId: result.locationId,
-          verificationId: result.verificationId,
-        );
-        await collector.start();
-      } catch (e) {
-        debugPrint('[AddressIQSDK] Background collection failed: $e');
-      }
 
       setState(() => _screen = _Screen.verifying);
     } catch (e) {
@@ -107,21 +98,85 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
     widget.onCancel?.call();
   }
 
+  /// Ordered user-facing capture steps used by the step indicator (P1-2).
+  /// `welcome` and `verifying` are not numbered steps.
+  static const _stepStages = <_Screen>[
+    _Screen.addressSearch,
+    _Screen.mapPin,
+    _Screen.propertyDetails,
+    _Screen.photoCapture,
+    _Screen.consent,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final t = widget.theme;
 
+    final screen = switch (_screen) {
+      _Screen.welcome => WelcomeScreen(theme: t, onNext: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
+      _Screen.addressSearch => AddressSearchScreen(theme: t, address: _address, googleMapsApiKey: widget.config.googleMapsApiKey, onNext: (a) { _address = a; _go(_Screen.mapPin); }, onBack: () => _go(_Screen.welcome), onCancel: _handleCancel),
+      _Screen.mapPin => MapPinScreen(theme: t, address: _address, googleMapsApiKey: widget.config.googleMapsApiKey, onNext: (a) { _address = a; _go(_Screen.propertyDetails); }, onBack: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
+      _Screen.propertyDetails => PropertyDetailsScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.photoCapture); }, onBack: () => _go(_Screen.mapPin), onCancel: _handleCancel),
+      _Screen.photoCapture => PhotoCaptureScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.consent); }, onBack: () => _go(_Screen.propertyDetails), onCancel: _handleCancel),
+      _Screen.consent => ConsentScreen(theme: t, address: _address, onSubmit: _handleSubmit, onBack: () => _go(_Screen.photoCapture), onCancel: _handleCancel, submitting: _submitting),
+      _Screen.verifying => _result != null ? VerifyingScreen(theme: t, result: _result!, onDone: _handleDone) : const SizedBox.shrink(),
+    };
+
+    final stepIndex = _stepStages.indexOf(_screen);
+
     return Scaffold(
       backgroundColor: t.background,
-      body: switch (_screen) {
-        _Screen.welcome => WelcomeScreen(theme: t, onNext: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
-        _Screen.addressSearch => AddressSearchScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.mapPin); }, onBack: () => _go(_Screen.welcome), onCancel: _handleCancel),
-        _Screen.mapPin => MapPinScreen(theme: t, address: _address, mapboxToken: widget.config.mapboxToken, onNext: (a) { _address = a; _go(_Screen.propertyDetails); }, onBack: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
-        _Screen.propertyDetails => PropertyDetailsScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.photoCapture); }, onBack: () => _go(_Screen.mapPin), onCancel: _handleCancel),
-        _Screen.photoCapture => PhotoCaptureScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.consent); }, onBack: () => _go(_Screen.propertyDetails), onCancel: _handleCancel),
-        _Screen.consent => ConsentScreen(theme: t, address: _address, onSubmit: _handleSubmit, onBack: () => _go(_Screen.photoCapture), onCancel: _handleCancel, submitting: _submitting),
-        _Screen.verifying => _result != null ? VerifyingScreen(theme: t, result: _result!, onDone: _handleDone) : const SizedBox.shrink(),
-      },
+      body: Column(
+        children: [
+          if (stepIndex >= 0)
+            _StepIndicator(theme: t, current: stepIndex, total: _stepStages.length),
+          Expanded(child: screen),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slim progress indicator shown atop the Collect UI multi-step flow (P1-2).
+/// A dot per step (active dot widens) plus a "Step X of N" label, themed via
+/// [AddressIQTheme]. Mirrors the React Native `<IQLocationManager>` indicator.
+class _StepIndicator extends StatelessWidget {
+  final AddressIQTheme theme;
+  final int current;
+  final int total;
+
+  const _StepIndicator({required this.theme, required this.current, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              for (var i = 0; i < total; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 8,
+                    width: i == current ? 20 : 8,
+                    decoration: BoxDecoration(
+                      color: i <= current ? theme.primary : theme.border,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Text(
+            'Step ${current + 1} of $total',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: theme.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

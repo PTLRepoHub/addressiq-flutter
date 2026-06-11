@@ -3,7 +3,7 @@ description: >-
   AddressIQ address verification SDK for Flutter — background location
   collection, address capture UI, and the verify lifecycle for KYC and
   fraud detection in emerging markets.
-version: 0.3.0
+version: 0.4.0
 homepage: https://addressiq.io
 repository: https://github.com/PTLRepoHub/addressiq-flutter
 
@@ -22,7 +22,9 @@ dependencies:
   shared_preferences: ^2.2.0
   geolocator: ^12.0.0
   image_picker: ^1.0.0
-  mapbox_maps_flutter: ^2.0.0
+  # Collect UI map flow: interactive Google map (Maps JS) + Street View render
+  # in a WebView — dependency-free vs the native Google Maps SDK.
+  webview_flutter: ^4.4.0
   workmanager: ^0.5.2
 
 dev_dependencies:

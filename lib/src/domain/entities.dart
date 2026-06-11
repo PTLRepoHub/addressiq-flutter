@@ -63,6 +63,24 @@ class StartPhysicalArgs {
   });
 }
 
+class StartVerificationArgs {
+  final String locationCode;
+
+  /// Digital provider slug. Defaults to `internal_ai` server-side when null.
+  final String? digitalProvider;
+  final Map<String, dynamic>? metadata;
+  final String? idempotencyKey;
+  final String? branchId;
+
+  const StartVerificationArgs({
+    required this.locationCode,
+    this.digitalProvider,
+    this.metadata,
+    this.idempotencyKey,
+    this.branchId,
+  });
+}
+
 class StartCombinedArgs {
   final String locationCode;
   final String physicalProvider;

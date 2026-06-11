@@ -5,7 +5,7 @@ import '../components/addressiq_button.dart';
 
 class VerifyingScreen extends StatefulWidget {
   final AddressIQTheme theme;
-  final VerifyResult result;
+  final CollectResult result;
   final VoidCallback onDone;
 
   const VerifyingScreen({super.key, required this.theme, required this.result, required this.onDone});
@@ -38,8 +38,8 @@ class _VerifyingScreenState extends State<VerifyingScreen> with SingleTickerProv
     final r = widget.result;
 
     final steps = [
-      'Your location will be collected periodically in the background',
-      'You can use your phone normally \u2014 no action needed',
+      'Verification can now be started on this address',
+      'Once started, your location confirms you live here',
       'You\u2019ll be notified when verification is complete',
       'You can opt out at any time from the app settings',
     ];
@@ -62,9 +62,9 @@ class _VerifyingScreenState extends State<VerifyingScreen> with SingleTickerProv
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Verification Started!', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: t.textColor)),
+                  Text('Address Collected!', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: t.textColor)),
                   const SizedBox(height: 8),
-                  Text('We\u2019re now verifying your address in the background. This typically takes 2-7 days.',
+                  Text('Your address has been saved. Verification can now be started on it.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 15, color: t.textSecondary, height: 1.4)),
                   const SizedBox(height: 24),
@@ -75,9 +75,9 @@ class _VerifyingScreenState extends State<VerifyingScreen> with SingleTickerProv
                     decoration: BoxDecoration(color: t.primaryLight, borderRadius: BorderRadius.circular(14)),
                     child: Column(
                       children: [
-                        _infoRow('Verification ID', r.verificationId, t),
-                        _infoRow('Location ID', r.locationId, t),
-                        _infoRow('Status', 'Collecting data...', t, valueColor: t.success),
+                        _infoRow('Location Code', r.locationCode, t),
+                        if (r.formattedAddress != null) _infoRow('Address', r.formattedAddress!, t),
+                        _infoRow('Status', 'Collected', t, valueColor: t.success),
                       ],
                     ),
                   ),

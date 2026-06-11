@@ -21,6 +21,17 @@ class VerificationRepository {
         branchId: args.branchId,
       );
 
+  Future<Map<String, dynamic>> startDigital(StartVerificationArgs args) =>
+      client.post(
+        '/api/v1/locations/${args.locationCode}/verifications/digital',
+        {
+          'digitalProvider': args.digitalProvider ?? 'internal_ai',
+          if (args.metadata != null) 'metadata': args.metadata,
+        },
+        idempotencyKey: args.idempotencyKey,
+        branchId: args.branchId,
+      );
+
   Future<Map<String, dynamic>> startCombined(StartCombinedArgs args) =>
       client.post(
         '/api/v1/locations/${args.locationCode}/verifications/combined',

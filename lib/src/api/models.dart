@@ -45,6 +45,7 @@ class AddressData {
     'lat': lat,
     'lon': lon,
     'placeId': placeId ?? 'sdk_manual',
+    'formattedAddress': formattedAddress,
     'propertyNumber': propertyNumber,
     'streetName': streetName,
     'buildingColor': buildingColor,
@@ -54,20 +55,48 @@ class AddressData {
   };
 }
 
+/// Result of the Collect UI. The widget **collects only** — it saves the address
+/// and returns its [locationCode]; it does NOT start a verification. Start
+/// verification from the `onComplete` callback with
+/// `AddressIQ.instance.startVerification(locationCode: ...)`.
+class CollectResult {
+  final String locationCode;
+  final String? formattedAddress;
+  final double? lat;
+  final double? lon;
+  final String? placeId;
+  final bool isExisting;
+
+  const CollectResult({
+    required this.locationCode,
+    this.formattedAddress,
+    this.lat,
+    this.lon,
+    this.placeId,
+    this.isExisting = false,
+  });
+
+  factory CollectResult.fromJson(Map<String, dynamic> json) => CollectResult(
+    locationCode: json['locationCode'] as String,
+    formattedAddress: json['formattedAddress'] as String?,
+    isExisting: json['isExisting'] as bool? ?? false,
+  );
+}
+
 class VerifyResult {
-  final String verificationId;
-  final String locationId;
+  final String verificationCode;
+  final String locationCode;
   final String status;
 
   const VerifyResult({
-    required this.verificationId,
-    required this.locationId,
+    required this.verificationCode,
+    required this.locationCode,
     required this.status,
   });
 
   factory VerifyResult.fromJson(Map<String, dynamic> json) => VerifyResult(
-    verificationId: json['verificationId'] as String,
-    locationId: json['locationId'] as String,
+    verificationCode: json['verificationCode'] as String,
+    locationCode: json['locationCode'] as String,
     status: json['status'] as String,
   );
 }
