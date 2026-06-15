@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../api/models.dart';
 import '../theme.dart';
 import '../components/addressiq_button.dart';
-import '../components/step_indicator.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final AddressIQTheme theme;
@@ -64,7 +63,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             child: Row(
               children: [
                 IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
-                Expanded(child: StepIndicator(totalSteps: 5, currentStep: 2, theme: t)),
+                const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: widget.onCancel),
               ],
             ),

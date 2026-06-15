@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import '../api/addressiq_api.dart';
 import '../api/models.dart';
 import 'theme.dart';
-import 'screens/welcome_screen.dart';
-import 'screens/address_search_screen.dart';
-import 'screens/map_pin_screen.dart';
+import 'screens/permission_screen.dart';
+import 'screens/address_screen.dart';
+import 'screens/street_view_screen.dart';
 import 'screens/property_details_screen.dart';
-import 'screens/photo_capture_screen.dart';
 import 'screens/consent_screen.dart';
 import 'screens/verifying_screen.dart';
 
-enum _Screen { welcome, addressSearch, mapPin, propertyDetails, photoCapture, consent, verifying }
+// §6.6 Collect UI canon. Steps 4–8: permission(4) → address(5) → streetview(6)
+// → details(7) → consent(8). `verifying` is the success confirmation.
+enum _Screen { permission, address, streetview, details, consent, verifying }
 
 /// Full-screen address verification flow.
 ///
@@ -51,7 +52,7 @@ class AddressIQVerify extends StatefulWidget {
 }
 
 class _AddressIQVerifyState extends State<AddressIQVerify> {
-  _Screen _screen = _Screen.welcome;
+  _Screen _screen = _Screen.permission;
   late AddressData _address;
   late AddressIQApi _api;
   bool _submitting = false;
@@ -98,13 +99,13 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
     widget.onCancel?.call();
   }
 
-  /// Ordered user-facing capture steps used by the step indicator (P1-2).
-  /// `welcome` and `verifying` are not numbered steps.
+  /// §6.6: the 4 numbered capture steps (5–8) → "Step X of 4". `permission`
+  /// (step 4) and `verifying` are not numbered. `streetview` is numbered but
+  /// skipped when there's no Street View coverage.
   static const _stepStages = <_Screen>[
-    _Screen.addressSearch,
-    _Screen.mapPin,
-    _Screen.propertyDetails,
-    _Screen.photoCapture,
+    _Screen.address,
+    _Screen.streetview,
+    _Screen.details,
     _Screen.consent,
   ];
 
@@ -113,12 +114,11 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
     final t = widget.theme;
 
     final screen = switch (_screen) {
-      _Screen.welcome => WelcomeScreen(theme: t, onNext: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
-      _Screen.addressSearch => AddressSearchScreen(theme: t, address: _address, googleMapsApiKey: widget.config.googleMapsApiKey, onNext: (a) { _address = a; _go(_Screen.mapPin); }, onBack: () => _go(_Screen.welcome), onCancel: _handleCancel),
-      _Screen.mapPin => MapPinScreen(theme: t, address: _address, googleMapsApiKey: widget.config.googleMapsApiKey, onNext: (a) { _address = a; _go(_Screen.propertyDetails); }, onBack: () => _go(_Screen.addressSearch), onCancel: _handleCancel),
-      _Screen.propertyDetails => PropertyDetailsScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.photoCapture); }, onBack: () => _go(_Screen.mapPin), onCancel: _handleCancel),
-      _Screen.photoCapture => PhotoCaptureScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.consent); }, onBack: () => _go(_Screen.propertyDetails), onCancel: _handleCancel),
-      _Screen.consent => ConsentScreen(theme: t, address: _address, onSubmit: _handleSubmit, onBack: () => _go(_Screen.photoCapture), onCancel: _handleCancel, submitting: _submitting),
+      _Screen.permission => PermissionScreen(theme: t, onGranted: () => _go(_Screen.address), onCancel: _handleCancel),
+      _Screen.address => AddressScreen(theme: t, address: _address, googleMapsApiKey: widget.config.googleMapsApiKey, onNext: (a) { _address = a; _go(_Screen.details); }, onStreetView: (a) { _address = a; _go(_Screen.streetview); }, onBack: () => _go(_Screen.permission), onCancel: _handleCancel),
+      _Screen.streetview => StreetViewScreen(theme: t, apiKey: widget.config.googleMapsApiKey ?? '', lat: _address.lat ?? 0, lon: _address.lon ?? 0, onConfirm: () => _go(_Screen.details), onBack: () => _go(_Screen.address), onCancel: _handleCancel),
+      _Screen.details => PropertyDetailsScreen(theme: t, address: _address, onNext: (a) { _address = a; _go(_Screen.consent); }, onBack: () => _go(_Screen.address), onCancel: _handleCancel),
+      _Screen.consent => ConsentScreen(theme: t, address: _address, onSubmit: _handleSubmit, onBack: () => _go(_Screen.details), onCancel: _handleCancel, submitting: _submitting),
       _Screen.verifying => _result != null ? VerifyingScreen(theme: t, result: _result!, onDone: _handleDone) : const SizedBox.shrink(),
     };
 
