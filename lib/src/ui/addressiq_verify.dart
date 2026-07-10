@@ -54,7 +54,19 @@ class AddressIQVerify extends StatefulWidget {
   State<AddressIQVerify> createState() => _AddressIQVerifyState();
 }
 
-const _defaultWidgetUrl = 'https://cdn.addressiq.com/v0.1.0/iqcollect.js';
+/// There is deliberately NO default remote widget URL.
+///
+/// The widget ships as a package asset (`assets/iqcollect.js`). If it is
+/// missing the package is broken, and silently fetching a script from a CDN
+/// into this WebView — alongside the session config — would turn a packaging
+/// bug into remote code execution. We fail closed instead.
+///
+/// `config.widgetUrl` remains supported as an explicit developer override for
+/// serving a local bundle during development.
+const _widgetBundleMissing =
+    'AddressIQ: the bundled widget (assets/iqcollect.js) is missing from '
+    'addressiq_sdk and no config.widgetUrl override was supplied. This is a '
+    'packaging bug; the SDK will not load the widget from a remote host.';
 
 class _AddressIQVerifyState extends State<AddressIQVerify> {
   late final WebViewController _controller;
@@ -80,6 +92,12 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
       bundled = null;
     }
     if (!mounted) return;
+    // Fail closed: with no bundled asset and no explicit override there is
+    // nothing safe to load. Never fall back to a remote script.
+    if (bundled == null && widget.config.widgetUrl == null) {
+      widget.onError?.call(StateError(_widgetBundleMissing));
+      return;
+    }
     await _controller.loadHtmlString(_buildHtml(bundled));
   }
 
@@ -213,9 +231,18 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
       };
     }
     final cfg = jsonEncode(cfgMap);
-    final widgetUrl = widget.config.widgetUrl ?? _defaultWidgetUrl;
-    final widgetScript =
-        bundledJs != null ? '<script>$bundledJs</script>' : '<script src="$widgetUrl"></script>';
+    // Prefer the bundled widget. Honour an explicit override. With neither, fail
+    // closed — never reach for a remote script. `_loadWidget` guards this case
+    // up front; this check keeps `_buildHtml` safe on its own.
+    final widgetUrl = widget.config.widgetUrl;
+    final String widgetScript;
+    if (bundledJs != null) {
+      widgetScript = '<script>$bundledJs</script>';
+    } else if (widgetUrl != null) {
+      widgetScript = '<script src="$widgetUrl"></script>';
+    } else {
+      throw StateError(_widgetBundleMissing);
+    }
     return '''
 <!doctype html><html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
