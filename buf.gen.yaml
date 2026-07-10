@@ -4,7 +4,7 @@ version: v2
 # once the BSR module is published.
 inputs:
   - git_repo: https://github.com/PTLRepoHub/AddressIq-proto.git
-    branch: main
+    tag: v0.1.0
 plugins:
   # Dart bindings (depend on package:protobuf, declared in pubspec.yaml).
   - remote: buf.build/protocolbuffers/dart:v21.1.2
