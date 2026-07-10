@@ -17,10 +17,15 @@ import 'package:addressiq_sdk/addressiq.dart';
 // directly under a prefix so both configs are usable side-by-side.
 import 'package:addressiq_sdk/src/api/models.dart' as collect;
 
-const _apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://api.addressiq.com');
+// For local dev, point at the sample server, e.g.:
+//   flutter run --dart-define=API_URL=http://10.0.2.2:3355   (Android emulator)
+//   flutter run --dart-define=API_URL=http://localhost:3355  (iOS simulator)
+const _apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://api.addressiqpro.com');
 const _apiKey = String.fromEnvironment('API_KEY', defaultValue: 'aiq_test_demo_bank_seed01');
 // Track-A Collect UI authenticates with a widget session token (Bearer).
 const _sessionToken = String.fromEnvironment('SESSION_TOKEN', defaultValue: 'sdk_widget_session_demo');
+// Fallback name only — the widget fetches the real business identity from the backend.
+const _businessName = String.fromEnvironment('BUSINESS_NAME', defaultValue: 'Kuda Business');
 
 void main() => runApp(const SampleApp());
 
@@ -203,7 +208,13 @@ class _RootScreenState extends State<RootScreen> {
   void _openCollectUI() {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => AddressIQVerify(
-        config: collect.AddressIQConfig(apiKey: _apiKey, apiUrl: _apiUrl, sessionToken: _sessionToken),
+        config: collect.AddressIQConfig(
+          apiKey: _apiKey,
+          apiUrl: _apiUrl,
+          sessionToken: _sessionToken,
+          appUserId: _appUserIdCtrl.text,
+          businessName: _businessName,
+        ),
         onComplete: (result) async {
           Navigator.of(context).pop();
           _remember(result.locationCode);

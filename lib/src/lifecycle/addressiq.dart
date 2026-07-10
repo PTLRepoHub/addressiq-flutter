@@ -290,6 +290,28 @@ class AddressIQ {
     return _permissionToStateMap(permission);
   }
 
+  /// Drive the OS toward the combination address verification needs: precise
+  /// (full accuracy) + background/Always. Mirrors the native iOS/Android SDKs'
+  /// `requestPreciseAndAlways`. Runs the whileInUse→Always chain, then — on
+  /// iOS 14+ — requests **temporary full accuracy** if the user granted only
+  /// approximate location. Returns the final permission snapshot.
+  ///
+  /// `purposeKey` must match an entry in the host app's Info.plist
+  /// `NSLocationTemporaryUsageDescriptionDictionary`.
+  Future<Map<String, String>> requestPreciseAndAlways({
+    String purposeKey = 'AddressVerification',
+  }) async {
+    final state = await requestPermissions();
+    try {
+      if (await Geolocator.getLocationAccuracy() == LocationAccuracyStatus.reduced) {
+        await Geolocator.requestTemporaryFullAccuracy(purposeKey: purposeKey);
+      }
+    } catch (_) {
+      // Accuracy authorization not supported on this platform/version — ignore.
+    }
+    return state;
+  }
+
   /// Deep-link to the host app's Settings page so the user can
   /// re-enable a permanently-denied permission. The OS will not
   /// re-prompt until they toggle the grant manually.

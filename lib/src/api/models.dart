@@ -4,6 +4,13 @@ class AddressIQConfig {
   final String sessionToken;
   final String? mapboxToken;
   final String? googleMapsApiKey;
+  /// Stable end-user identifier passed to the widget. Falls back to the
+  /// session token when omitted (the token already binds identity server-side).
+  final String? appUserId;
+  /// Business display name shown on the widget's intro/consent screens.
+  final String? businessName;
+  /// Override the hosted widget bundle URL (for local development).
+  final String? widgetUrl;
 
   const AddressIQConfig({
     required this.apiKey,
@@ -11,6 +18,9 @@ class AddressIQConfig {
     required this.sessionToken,
     this.mapboxToken,
     this.googleMapsApiKey,
+    this.appUserId,
+    this.businessName,
+    this.widgetUrl,
   });
 }
 
