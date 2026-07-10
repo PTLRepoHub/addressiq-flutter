@@ -5,6 +5,16 @@ name: Release
 #
 # Auth: pub.dev OIDC trusted publishing — configure this repo as a trusted
 # publisher on pub.dev (no secret needed).
+#
+# ⚠ pub.dev publishes are PERMANENT and PUBLIC. There is no unpublish.
+#
+# Every other SDK's release path is implicitly gated by a missing secret
+# (NPM_TOKEN, COCOAPODS_TRUNK_TOKEN, CENTRAL_TOKEN_*). OIDC needs no secret, so
+# a tag alone would be enough to publish this proprietary package forever.
+# Hence an explicit gate: the repository variable PUB_DEV_PUBLISH must be
+# exactly "true" or the job downgrades itself to a dry run.
+#
+#   gh variable set PUB_DEV_PUBLISH --repo PTLRepoHub/addressiq-flutter --body true
 
 on:
   push:
@@ -35,8 +45,26 @@ jobs:
           fi
       - run: flutter pub get
       - name: Publish
+        env:
+          # Repository variable, not a secret — its value is meant to be visible.
+          PUB_DEV_PUBLISH: ${{ vars.PUB_DEV_PUBLISH }}
         run: |
+          set -euo pipefail
+
+          REAL=false
           if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+            REAL=true
+          fi
+
+          # Fail safe, not fail open: anything other than exactly "true" means
+          # dry run. An unset variable expands to "" and lands here too.
+          if [ "$REAL" = "true" ] && [ "${PUB_DEV_PUBLISH:-}" != "true" ]; then
+            echo "::warning::PUB_DEV_PUBLISH is not 'true' (got '${PUB_DEV_PUBLISH:-<unset>}') — refusing to publish to pub.dev. Running a dry run instead."
+            REAL=false
+          fi
+
+          if [ "$REAL" = "true" ]; then
+            echo "PUB_DEV_PUBLISH=true — publishing ${GITHUB_REF_NAME:-} to pub.dev. This is permanent."
             dart pub publish --force
           else
             dart pub publish --dry-run
