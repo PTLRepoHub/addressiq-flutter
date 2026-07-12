@@ -21,7 +21,7 @@ import 'theme.dart';
 /// AddressIQVerify(
 ///   config: AddressIQConfig(
 ///     apiKey: 'fsp_...',
-///     apiUrl: 'https://api.addressiq.io',
+///     environment: 'production',
 ///     sessionToken: '...',
 ///     appUserId: 'cust_123',
 ///   ),
@@ -214,7 +214,7 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
     // fallback name (with the app's theme colour) when the integrator set one.
     final cfgMap = <String, dynamic>{
       'apiKey': widget.config.apiKey,
-      'apiUrl': widget.config.apiUrl,
+      'apiUrl': widget.config.resolvedApiUrl,
       'appUserId': widget.config.appUserId ?? widget.config.sessionToken,
       // Drives the platform-specific "Location permission" Settings screen.
       'platform': Platform.isIOS ? 'ios' : 'android',

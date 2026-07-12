@@ -21,22 +21,22 @@ flutter run
 
 ## Configure it
 
-Config is passed with `--dart-define` (so nothing sensitive is committed):
+Credentials are passed with `--dart-define` (so nothing sensitive is committed).
+The API host is **not** configurable — it is resolved from the environment you
+pick on the Login screen (`sandbox` / `production` / `staging` / `development`):
 
 ```bash
-# Use the hosted API (default)
+# Uses the environment selected on the Login screen to resolve the host
 flutter run
-
-# Point at a local sample server (Android emulator)
-flutter run --dart-define=API_URL=http://10.0.2.2:3355
-
-# iOS simulator
-flutter run --dart-define=API_URL=http://localhost:3355
 ```
 
-Available defines: `API_URL`, `API_KEY`, `SESSION_TOKEN`, `BUSINESS_NAME`.
+Available defines: `API_KEY`, `SESSION_TOKEN`, `BUSINESS_NAME`.
 `BUSINESS_NAME` is only a fallback — the widget fetches the real business
 name/logo/colour from the backend.
+
+To hit a local backend, choose the **Development** environment on the Login
+screen. It resolves to `http://localhost:3355`, and on the Android emulator
+automatically uses `http://10.0.2.2:3355`.
 
 ## Run against the local backend
 
@@ -52,10 +52,13 @@ sample `server.js` you can run as your server. It talks to the real AddressIQ AP
    MOCK_UPSTREAM=1 node server.js
    ```
    It listens on `http://localhost:3355`.
-2. Run the app with `--dart-define=API_URL=…` pointing at it (see above).
+2. Launch the app and pick the **Development** environment on the Login screen —
+   the SDK resolves the local `:3355` host automatically.
 
-> `10.0.2.2` is the Android emulator's alias for your computer's `localhost`; the
-> iOS simulator uses `localhost` directly; a real device uses your LAN IP.
+> `10.0.2.2` is the Android emulator's alias for your computer's `localhost` (the
+> SDK selects it automatically for `development`); the iOS simulator uses
+> `localhost` directly. A real device needs your LAN IP, which the built-in
+> `development` mapping does not cover.
 
 ## Note on the code
 

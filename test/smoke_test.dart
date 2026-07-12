@@ -11,14 +11,9 @@ void main() {
       expect(config.resolvedApiUrl, startsWith('https://'));
     });
 
-    test('config honors an explicit apiUrl override', () {
-      const override = 'https://proxy.partner.example';
-      const config = AddressIQConfig(
-        apiKey: 'aiq_test',
-        environment: 'production',
-        apiUrl: override,
-      );
-      expect(config.resolvedApiUrl, override);
+    test('development environment resolves to a loopback host', () {
+      const config = AddressIQConfig(apiKey: 'aiq_test', environment: 'development');
+      expect(config.resolvedApiUrl, contains(':3355'));
     });
 
     test('lifecycle state enum exposes the contract states', () {
