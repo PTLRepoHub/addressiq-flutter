@@ -37,6 +37,10 @@ class AddressIQConfig {
   /// Effective API URL, resolved from [environment]. Integrators never
   /// pass a URL — the SDK owns host resolution.
   String get resolvedApiUrl => resolveEnvironmentApiUrl(environment);
+
+  /// Effective ingest URL, resolved from [environment]. Transit events are
+  /// posted here rather than to [resolvedApiUrl].
+  String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
 }
 
 class AddressIQException implements Exception {
@@ -449,6 +453,7 @@ class AddressIQ {
     try {
       final api = AddressIQApi(
         apiUrl: config.resolvedApiUrl,
+        ingestUrl: config.resolvedIngestUrl,
         apiKey: config.apiKey,
         sessionToken: '',
       );

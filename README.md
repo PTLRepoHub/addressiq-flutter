@@ -170,6 +170,16 @@ pass a URL — the SDK owns host resolution:
 Use `development` to point the SDK at a backend running locally on port 3355.
 On the Android emulator it automatically uses the `10.0.2.2` host-loopback alias.
 
+Transit-event batches are posted to a dedicated ingest host, resolved from the
+same `environment`:
+
+| environment | resolved ingest URL |
+| --- | --- |
+| `production` | baked in at publish time (default `https://ingest-api.addressiqpro.com`) |
+| `staging` | `https://ingest-api-staging.addressiqpro.com` |
+| `sandbox` | `https://ingest-api-staging.addressiqpro.com` |
+| `development` | `http://localhost:3355` (Android emulator: `http://10.0.2.2:3355`) |
+
 ## Errors
 
 Lifecycle methods throw `AddressIQException(code, message)`. Common codes:

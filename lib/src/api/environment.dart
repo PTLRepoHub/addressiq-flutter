@@ -24,3 +24,26 @@ String resolveEnvironmentApiUrl(String environment) {
       return 'https://api.addressiqpro.com';
   }
 }
+
+/// Resolves the ingest base URL for an AddressIQ [environment].
+///
+/// Transit events are posted to a dedicated ingest host rather than the API
+/// host. Resolution mirrors [resolveEnvironmentApiUrl]: production is baked at
+/// publish time (see build_config.dart), staging/sandbox use the managed
+/// staging ingest host, and development targets a local backend on port 3355.
+String resolveEnvironmentIngestUrl(String environment) {
+  switch (environment) {
+    case 'production':
+      // Baked into the published package at publish time (see build_config.dart).
+      return kBuildIngestUrl;
+    case 'staging':
+    case 'sandbox':
+      return 'https://ingest-api-staging.addressiqpro.com';
+    case 'development':
+      return Platform.isAndroid
+          ? 'http://10.0.2.2:3355'
+          : 'http://localhost:3355';
+    default:
+      return kBuildIngestUrl;
+  }
+}

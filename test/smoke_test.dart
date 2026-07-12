@@ -16,6 +16,17 @@ void main() {
       expect(config.resolvedApiUrl, contains(':3355'));
     });
 
+    test('config resolves a dedicated ingest host', () {
+      const prod = AddressIQConfig(apiKey: 'aiq_test', environment: 'production');
+      expect(prod.resolvedIngestUrl, 'https://ingest-api.addressiqpro.com');
+
+      const sandbox = AddressIQConfig(apiKey: 'aiq_test', environment: 'sandbox');
+      expect(sandbox.resolvedIngestUrl, contains('ingest-api-staging'));
+
+      const dev = AddressIQConfig(apiKey: 'aiq_test', environment: 'development');
+      expect(dev.resolvedIngestUrl, contains(':3355'));
+    });
+
     test('lifecycle state enum exposes the contract states', () {
       expect(SdkLifecycleState.values, contains(SdkLifecycleState.uninitialized));
       expect(SdkLifecycleState.values, contains(SdkLifecycleState.terminated));
