@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.5.0...v0.6.0) (2026-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* removed AddressIQConfig.googleMapsApiKey and AddressIQConfig.mapboxToken. The key is provisioned automatically by the platform; there is nothing to pass.
+
+### Features
+
+* **proto:** regen against proto v0.1.0 ([#2](https://github.com/PTLRepoHub/addressiq-flutter/issues/2)) ([a11ba08](https://github.com/PTLRepoHub/addressiq-flutter/commit/a11ba083d4fecbd7ce48c303641da6860f77702a))
+* provision Google Maps key automatically; remove googleMapsApiKey/mapboxToken ([#4](https://github.com/PTLRepoHub/addressiq-flutter/issues/4)) ([11c194d](https://github.com/PTLRepoHub/addressiq-flutter/commit/11c194d855128ad4a85f847db3c82a3f7a8036ce))
+
+
+### Bug Fixes
+
+* add canonical addressiq_sdk.dart entry point ([c24d7b6](https://github.com/PTLRepoHub/addressiq-flutter/commit/c24d7b657bf33c8c3e67987cc9cd369fd30cbed4))
+* add LICENSE file required by pub.dev ([9c7db91](https://github.com/PTLRepoHub/addressiq-flutter/commit/9c7db91feb46c9de86b014bed27241b4a90bd900))
+
 ## [0.5.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.4.0...v0.5.0) (2026-07-10)
 
 
