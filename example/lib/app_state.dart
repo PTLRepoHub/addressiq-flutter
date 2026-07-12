@@ -8,7 +8,7 @@ import 'package:addressiq_sdk/addressiq.dart';
 
 /// The credentials/identity captured on the Login screen.
 class SessionData {
-  /// One of the SDK environments: 'sandbox' | 'production' | 'staging' | 'development'.
+  /// One of the SDK environments: 'staging' | 'production' | 'development'.
   final String environment;
   final String appUserId;
   final String? firstName;
@@ -73,7 +73,7 @@ class AppStore {
 
 /// API key per environment. In the RN example this comes from a
 /// `credentials.json`; here it falls back to a `--dart-define` and a
-/// sensible sandbox default so the demo runs out of the box.
+/// sensible staging default so the demo runs out of the box.
 const _apiKeyOverride = String.fromEnvironment('API_KEY', defaultValue: '');
 
 String apiKeyForEnvironment(String environment) {
@@ -87,4 +87,5 @@ String apiKeyForEnvironment(String environment) {
 const sessionTokenForCollect =
     String.fromEnvironment('SESSION_TOKEN', defaultValue: 'sdk_widget_session_demo');
 
-const sdkEnvironments = <String>['sandbox', 'production', 'staging', 'development'];
+/// `sandbox` is a deprecated alias for `staging` and is deliberately not offered here.
+const sdkEnvironments = <String>['staging', 'production', 'development'];

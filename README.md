@@ -26,7 +26,7 @@ import 'package:addressiq_sdk/addressiq.dart';
 // 1. Initialize once at app start.
 AddressIQ.instance.initialize(AddressIQConfig(
   apiKey: 'aiq_...',
-  environment: 'production', // 'production' | 'staging' | 'sandbox' | 'development'
+  environment: 'production', // 'production' | 'staging' | 'development'
 ));
 
 // 2. Bind the signed-in user.
@@ -162,10 +162,37 @@ Integrators never pass a URL — the SDK owns host resolution. Just choose one
 of the supported environments:
 
 - `production`
-- `sandbox`
+- `staging` (`sandbox` is a deprecated alias that resolves identically)
 - `development`
 
+`staging` is canonical across all AddressIQ SDKs. `sandbox` was the former
+Flutter spelling and is still accepted by the resolver
+(`lib/src/api/environment.dart:26`), so existing integrators keep working.
+
 Choose `development` to target a backend running locally during development.
+
+Each environment resolves three hosts — API, ingest, and CDN. `production` and
+`staging` are baked in at publish time from GitHub repository variables (see
+[`docs/RELEASE.md`](docs/RELEASE.md)); `development` is local-only and never
+baked.
+
+```dart
+final config = AddressIQConfig(apiKey: 'aiq_...', environment: 'staging');
+config.resolvedApiUrl;    // API host
+config.resolvedIngestUrl; // telemetry ingest host
+config.resolvedCdnUrl;    // CDN host — config value only, see below
+```
+
+> **`resolvedCdnUrl` does not make the SDK load anything remotely.** The Collect
+> UI widget ships **bundled** in the package (`assets/iqcollect.js`), is injected
+> inline, and fails closed if it is missing — it never falls back to a remote
+> script. The CDN URL is exposed so hosts (and any future asset loading) resolve
+> the same per-environment host the web SDK publishes to.
+
+There are two exported `AddressIQConfig` classes — the lifecycle one
+(`lib/src/lifecycle/addressiq.dart:28-53`, re-exported by the barrel) and the
+Collect UI one (`lib/src/api/models.dart:5-42`). Both expose the same
+`resolved*` getters and resolve identically.
 
 ## Errors
 
@@ -199,6 +226,11 @@ git tag v0.4.0 && git push origin v0.4.0
 Uses pub.dev **OIDC trusted publishing** — configure this repo as a trusted
 publisher in the package's pub.dev admin settings (no secret required). Run the
 workflow manually with `dry_run: true` to validate first.
+
+The release bakes `lib/src/generated/build_config.dart` from six GitHub
+repository variables (staging + production × API/ingest/CDN) with
+`scripts/bake-build-config.sh --strict` — **a release fails if any of them is
+unset**. See [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Cross-links
 

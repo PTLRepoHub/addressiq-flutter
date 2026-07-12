@@ -44,29 +44,26 @@ jobs:
             sed -i "s/^version: .*/version: ${GITHUB_REF_NAME#v}/" pubspec.yaml
           fi
       - run: flutter pub get
-      - name: Bake production API URL into the package
+      # Regenerates lib/src/generated/build_config.dart from the repository
+      # variables below — three URLs (api, ingest, cdn) per shippable
+      # environment. `development` is not baked: it is a local-only concern.
+      #
+      # --strict: a release with any variable unset FAILS. The previous version
+      # of this step printed "unset — keeping the checked-in default" and
+      # published anyway, so a misconfigured release shipped a package pointing
+      # at whatever was committed. A release that cannot see its config must
+      # not guess.
+      - name: Bake build config (staging + production)
         env:
           # Repository variables, not secrets — their values are meant to ship
           # in the published package source.
-          ADDRESSIQ_API_URL: ${{ vars.ADDRESSIQ_API_URL }}
-          ADDRESSIQ_INGEST_URL: ${{ vars.ADDRESSIQ_INGEST_URL }}
-        run: |
-          set -euo pipefail
-          FILE=lib/src/generated/build_config.dart
-          if [ -z "${ADDRESSIQ_API_URL:-}" ]; then
-            echo "::warning::ADDRESSIQ_API_URL is unset — keeping the checked-in default in $FILE."
-          else
-            echo "Baking ADDRESSIQ_API_URL into $FILE"
-            sed -i "s#'https://api.addressiqpro.com'#'${ADDRESSIQ_API_URL}'#" "$FILE"
-            grep "kBuildApiUrl" "$FILE"
-          fi
-          if [ -z "${ADDRESSIQ_INGEST_URL:-}" ]; then
-            echo "::warning::ADDRESSIQ_INGEST_URL is unset — keeping the checked-in default in $FILE."
-          else
-            echo "Baking ADDRESSIQ_INGEST_URL into $FILE"
-            sed -i "s#'https://ingest-api.addressiqpro.com'#'${ADDRESSIQ_INGEST_URL}'#" "$FILE"
-            grep "kBuildIngestUrl" "$FILE"
-          fi
+          STAGING_ADDRESSIQ_API_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_API_BASE_URL }}
+          STAGING_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_INGEST_BASE_URL }}
+          STAGING_ADDRESSIQ_CDN_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_CDN_BASE_URL }}
+          PROD_ADDRESSIQ_API_BASE_URL: ${{ vars.PROD_ADDRESSIQ_API_BASE_URL }}
+          PROD_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.PROD_ADDRESSIQ_INGEST_BASE_URL }}
+          PROD_ADDRESSIQ_CDN_BASE_URL: ${{ vars.PROD_ADDRESSIQ_CDN_BASE_URL }}
+        run: scripts/bake-build-config.sh --strict
       - name: Publish
         env:
           # Repository variable, not a secret — its value is meant to be visible.

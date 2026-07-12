@@ -8,6 +8,7 @@ import '../api/models.dart';
 import '../lifecycle/addressiq.dart' show AddressIQ;
 import 'bridge_router.dart';
 import 'theme.dart';
+import 'widget_html.dart';
 
 /// Full-screen address verification flow.
 ///
@@ -54,20 +55,6 @@ class AddressIQVerify extends StatefulWidget {
   State<AddressIQVerify> createState() => _AddressIQVerifyState();
 }
 
-/// There is deliberately NO default remote widget URL.
-///
-/// The widget ships as a package asset (`assets/iqcollect.js`). If it is
-/// missing the package is broken, and silently fetching a script from a CDN
-/// into this WebView — alongside the session config — would turn a packaging
-/// bug into remote code execution. We fail closed instead.
-///
-/// `config.widgetUrl` remains supported as an explicit developer override for
-/// serving a local bundle during development.
-const _widgetBundleMissing =
-    'AddressIQ: the bundled widget (assets/iqcollect.js) is missing from '
-    'addressiq_sdk and no config.widgetUrl override was supplied. This is a '
-    'packaging bug; the SDK will not load the widget from a remote host.';
-
 class _AddressIQVerifyState extends State<AddressIQVerify> {
   late final WebViewController _controller;
 
@@ -83,8 +70,8 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
   }
 
   Future<void> _loadWidget() async {
-    // Prefer the bundled widget (offline, version-pinned); fall back to the
-    // hosted bundle only if the asset is missing.
+    // The widget is loaded CDN-first with an SRI pin, with the bundled asset as
+    // the offline/outage fallback — see widget_html.dart for the full rationale.
     String? bundled;
     try {
       bundled = await rootBundle.loadString('packages/addressiq_sdk/assets/iqcollect.js');
@@ -92,10 +79,12 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
       bundled = null;
     }
     if (!mounted) return;
-    // Fail closed: with no bundled asset and no explicit override there is
-    // nothing safe to load. Never fall back to a remote script.
-    if (bundled == null && widget.config.widgetUrl == null) {
-      widget.onError?.call(StateError(_widgetBundleMissing));
+    // Fail closed: with no bundled asset, no baked CDN pin and no explicit
+    // override there is nothing safe to load.
+    if (bundled == null &&
+        widget.config.widgetUrl == null &&
+        !cdnWidgetEnabled(widget.config)) {
+      widget.onError?.call(StateError(widgetBundleMissingMessage));
       return;
     }
     await _controller.loadHtmlString(_buildHtml(bundled));
@@ -208,56 +197,12 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
         _ => 'unknown',
       };
 
-  String _buildHtml(String? bundledJs) {
-    // Business identity (name/logo/colour) is fetched by the widget from the
-    // backend (tenant behind the API key). Only forward a client-supplied
-    // fallback name (with the app's theme colour) when the integrator set one.
-    final cfgMap = <String, dynamic>{
-      'apiKey': widget.config.apiKey,
-      'apiUrl': widget.config.resolvedApiUrl,
-      'appUserId': widget.config.appUserId ?? widget.config.sessionToken,
-      // Drives the platform-specific "Location permission" Settings screen.
-      'platform': Platform.isIOS ? 'ios' : 'android',
-    };
-    if (widget.config.businessName != null) {
-      // .value is the compatible API for the package's Flutter >=3.10 floor
-      // (toARGB32 only exists in 3.27+).
-      // ignore: deprecated_member_use
-      final argb = widget.theme.primary.value;
-      final primaryHex = '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-      cfgMap['business'] = {
-        'displayName': widget.config.businessName,
-        'primaryColor': primaryHex,
-      };
-    }
-    final cfg = jsonEncode(cfgMap);
-    // Prefer the bundled widget. Honour an explicit override. With neither, fail
-    // closed — never reach for a remote script. `_loadWidget` guards this case
-    // up front; this check keeps `_buildHtml` safe on its own.
-    final widgetUrl = widget.config.widgetUrl;
-    final String widgetScript;
-    if (bundledJs != null) {
-      widgetScript = '<script>$bundledJs</script>';
-    } else if (widgetUrl != null) {
-      widgetScript = '<script src="$widgetUrl"></script>';
-    } else {
-      throw StateError(_widgetBundleMissing);
-    }
-    return '''
-<!doctype html><html><head>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<style>html,body{margin:0;height:100%;background:#fff}#mount{min-height:100%}</style>
-</head><body>
-<div id="mount"></div>
-$widgetScript
-<script>
-  var cfg = $cfg;
-  var c = new window.AddressIQ.IQCollect(document.getElementById('mount'), cfg);
-  c.open();
-</script>
-</body></html>
-''';
-  }
+  String _buildHtml(String? bundledJs) => buildWidgetHtml(
+        config: widget.config,
+        theme: widget.theme,
+        platform: Platform.isIOS ? 'ios' : 'android',
+        bundledJs: bundledJs,
+      );
 
   @override
   Widget build(BuildContext context) {

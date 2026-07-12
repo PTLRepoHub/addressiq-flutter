@@ -26,7 +26,8 @@ class AddressIQConfig {
   final String apiKey;
 
   /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
-  /// `'staging'` / `'sandbox'`, or `'development'` (local backend on 3355).
+  /// `'staging'`, or `'development'` (local backend on 4000). `'sandbox'` is a
+  /// deprecated alias for `'staging'` and resolves identically.
   final String environment;
 
   const AddressIQConfig({
@@ -41,6 +42,15 @@ class AddressIQConfig {
   /// Effective ingest URL, resolved from [environment]. Transit events are
   /// posted here rather than to [resolvedApiUrl].
   String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
+
+  /// Effective CDN base URL for this environment.
+  ///
+  /// Nothing in the SDK fetches from it today — the verify widget ships bundled
+  /// (`assets/iqcollect.js`) and is injected inline, and it deliberately never
+  /// falls back to a remote script (see `AddressIQVerify`). This is exposed so
+  /// hosts and future asset loading resolve the same per-environment host the
+  /// web SDK publishes to.
+  String get resolvedCdnUrl => resolveEnvironmentCdnUrl(environment);
 }
 
 class AddressIQException implements Exception {

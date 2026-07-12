@@ -23,7 +23,7 @@ flutter run
 
 Credentials are passed with `--dart-define` (so nothing sensitive is committed).
 The API host is **not** configurable — it is resolved from the environment you
-pick on the Login screen (`sandbox` / `production` / `staging` / `development`):
+pick on the Login screen (`production` / `staging` / `development`):
 
 ```bash
 # Uses the environment selected on the Login screen to resolve the host
@@ -35,8 +35,8 @@ Available defines: `API_KEY`, `SESSION_TOKEN`, `BUSINESS_NAME`.
 name/logo/colour from the backend.
 
 To hit a local backend, choose the **Development** environment on the Login
-screen. It resolves to `http://localhost:3355`, and on the Android emulator
-automatically uses `http://10.0.2.2:3355`.
+screen. It resolves to `http://localhost:4000`, and on the Android emulator
+automatically uses `http://10.0.2.2:4000`.
 
 ## Run against the local backend
 
@@ -51,9 +51,9 @@ sample `server.js` you can run as your server. It talks to the real AddressIQ AP
    #   …or for offline fake data:
    MOCK_UPSTREAM=1 node server.js
    ```
-   It listens on `http://localhost:3355`.
+   It listens on `http://localhost:4000`.
 2. Launch the app and pick the **Development** environment on the Login screen —
-   the SDK resolves the local `:3355` host automatically.
+   the SDK resolves the local `:4000` host automatically.
 
 > `10.0.2.2` is the Android emulator's alias for your computer's `localhost` (the
 > SDK selects it automatically for `development`); the iOS simulator uses

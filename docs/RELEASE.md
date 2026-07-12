@@ -78,6 +78,52 @@ gh variable set PUB_DEV_PUBLISH --repo PTLRepoHub/addressiq-flutter --body true
 One org-owned App on `PTLRepoHub` (installed across the release repos) with
 `contents: write` + `pull_requests: write` (`RELEASE-ENGINEERING.md` §4.A).
 
+## Build configuration (baked at publish time)
+
+`lib/src/generated/build_config.dart` is **generated** — never hand-edit it.
+`scripts/bake-build-config.sh` rewrites it wholesale from six GitHub
+**repository variables** (not secrets — their values ship in the published
+package source), three URLs for each shippable environment:
+
+| | staging | production |
+|---|---|---|
+| API | `STAGING_ADDRESSIQ_API_BASE_URL` | `PROD_ADDRESSIQ_API_BASE_URL` |
+| Ingest | `STAGING_ADDRESSIQ_INGEST_BASE_URL` | `PROD_ADDRESSIQ_INGEST_BASE_URL` |
+| CDN | `STAGING_ADDRESSIQ_CDN_BASE_URL` | `PROD_ADDRESSIQ_CDN_BASE_URL` |
+
+These replace the old single-environment `ADDRESSIQ_API_URL` /
+`ADDRESSIQ_INGEST_URL` pair: staging used to be a hardcoded literal and no CDN
+host was baked at all.
+
+`development` is deliberately **not** baked — it points at the host machine's
+backend (`localhost:4000`, `10.0.2.2:4000` on the Android emulator) and stays a
+compile-time literal in `lib/src/api/environment.dart:9-10`.
+
+> ⚠ **Behaviour change — a misconfigured release now fails.** The old release
+> step `sed`'d each key and printed *"unset — keeping the checked-in default"*,
+> so a release with a missing variable published a package pointing at whatever
+> was committed, silently. `release.yml:56-66` now runs the baker with
+> `--strict`, which **hard-fails** the release if *any* of the six variables is
+> unset (`scripts/bake-build-config.sh:59-63`). **All six must be set as
+> repository variables before the next release.**
+
+Locally (and in CI outside release), running the script without `--strict` falls
+back to the checked-in safe public defaults
+(`scripts/bake-build-config.sh:31-38`), so `flutter analyze`, the test suite and
+a dry-run publish resolve real hosts with no substitution:
+
+```
+scripts/bake-build-config.sh            # local — unset vars keep their defaults
+scripts/bake-build-config.sh --strict   # what release.yml runs
+```
+
+Set the variables with:
+
+```
+gh variable set STAGING_ADDRESSIQ_API_BASE_URL --repo PTLRepoHub/addressiq-flutter --body https://…
+# …and the other five.
+```
+
 ## Versioning rules
 
 release-please derives the bump **purely from commit messages**. With
