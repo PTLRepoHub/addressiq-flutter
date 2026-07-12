@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.6.1...v0.7.0) (2026-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* removed AddressIQConfig.apiUrl (lifecycle + widget). Select a host via `environment` (production | sandbox | development); production is provisioned at build time.
+
+### Features
+
+* provision API URL (+ web: Maps key) at build time from GH env ([#8](https://github.com/PTLRepoHub/addressiq-flutter/issues/8)) ([e1d5954](https://github.com/PTLRepoHub/addressiq-flutter/commit/e1d59540bb9d55900b8985db0548968eed7c093b))
+
 ## [0.6.1](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.6.0...v0.6.1) (2026-07-12)
 
 
