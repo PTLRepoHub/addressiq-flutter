@@ -180,14 +180,53 @@ baked.
 final config = AddressIQConfig(apiKey: 'aiq_...', environment: 'staging');
 config.resolvedApiUrl;    // API host
 config.resolvedIngestUrl; // telemetry ingest host
-config.resolvedCdnUrl;    // CDN host — config value only, see below
+config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see below
 ```
 
-> **`resolvedCdnUrl` does not make the SDK load anything remotely.** The Collect
-> UI widget ships **bundled** in the package (`assets/iqcollect.js`), is injected
-> inline, and fails closed if it is missing — it never falls back to a remote
-> script. The CDN URL is exposed so hosts (and any future asset loading) resolve
-> the same per-environment host the web SDK publishes to.
+### How the Collect UI widget is loaded
+
+CDN-first, integrity-pinned, bundle as the fallback
+(`lib/src/ui/widget_html.dart:96-115`):
+
+1. **`config.widgetUrl`** — explicit developer override, wins over everything.
+2. **Pinned CDN build** — `{resolvedCdnUrl}/v{kWidgetVersion}/iqcollect.js`
+   loaded with `integrity="{kWidgetIntegrity}" crossorigin="anonymous"`
+   (`widget_html.dart:102-109`). WKWebView (WebKit) and Android WebView
+   (Chromium) both **enforce** `integrity`, so the CDN can only execute the exact
+   bytes hashed at build time. The pair is baked from the repo-root
+   `.widget-version` / `.widget-integrity` files that addressiq-web's release
+   fanout writes from the same build the CDN serves; CDN paths are immutable
+   (`/v{x.y.z}/`, no floating alias) because a mutable URL cannot be SRI-pinned.
+3. **Bundled `assets/iqcollect.js`** — the *fallback*, injected by
+   `onerror="__iqWidgetFallback()"`: CDN outage, offline device, or an SRI
+   mismatch all land on it. It is also the only source when the CDN path is off
+   (`development`, or an unbaked version/integrity — `cdnWidgetEnabled`,
+   `widget_html.dart:42-50`).
+
+With neither a pinned CDN build nor the bundle the SDK still **fails closed**
+(`StateError`, `widget_html.dart:114`) — it never loads an unpinned remote script.
+
+Three details in that markup are load-bearing — each fails *silently* toward
+"looks fine, but never actually uses the CDN":
+
+- `crossorigin="anonymous"` is **mandatory**: without it the cross-origin
+  response is opaque, `integrity` cannot be evaluated, and every load hard-fails
+  into the fallback.
+- **Script order**: a blocking classic `<script>` fires `onerror` before the
+  parser reaches the next inline script, so `__iqWidgetFallback()` is defined
+  *before* the remote tag (which carries no `defer`/`async`).
+- The inlined fallback bundle is **escaped** (`_scriptSafe`,
+  `widget_html.dart:149`) — it contains `</script>`-alike sequences that would
+  otherwise terminate the tag.
+
+> **The bundled asset in this package carries no Google Maps key.** pub.dev scans
+> published packages for credentials and rejects one containing a Google API key,
+> so the vendored `assets/iqcollect.js` is built key-free. This costs nothing: the
+> bundle is only the offline fallback and is never the SRI-checked artifact —
+> Flutter fetches and integrity-verifies the **keyed** bundle from the CDN exactly
+> like the other SDKs, and on the fallback path the Maps key arrives from the
+> backend's `GET /api/v1/widget/config`, which takes priority over any key baked
+> into a bundle anyway (`addressiq-web/src/flow.ts:111`).
 
 There are two exported `AddressIQConfig` classes — the lifecycle one
 (`lib/src/lifecycle/addressiq.dart:28-53`, re-exported by the barrel) and the
