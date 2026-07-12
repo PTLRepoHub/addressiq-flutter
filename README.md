@@ -157,28 +157,15 @@ builds against this repo's SDK source.
 
 ## Environment
 
-`AddressIQConfig.environment` resolves the API base URL. Integrators never
-pass a URL — the SDK owns host resolution:
+`AddressIQConfig.environment` selects which backend the SDK talks to.
+Integrators never pass a URL — the SDK owns host resolution. Just choose one
+of the supported environments:
 
-| environment | resolved URL |
-| --- | --- |
-| `production` | baked in at publish time (default `https://api.addressiqpro.com`) |
-| `staging` | `https://api-staging.addressiqpro.com` |
-| `sandbox` | `https://api-staging.addressiqpro.com` |
-| `development` | `http://localhost:3355` (Android emulator: `http://10.0.2.2:3355`) |
+- `production`
+- `sandbox`
+- `development`
 
-Use `development` to point the SDK at a backend running locally on port 3355.
-On the Android emulator it automatically uses the `10.0.2.2` host-loopback alias.
-
-Transit-event batches are posted to a dedicated ingest host, resolved from the
-same `environment`:
-
-| environment | resolved ingest URL |
-| --- | --- |
-| `production` | baked in at publish time (default `https://ingest-api.addressiqpro.com`) |
-| `staging` | `https://ingest-api-staging.addressiqpro.com` |
-| `sandbox` | `https://ingest-api-staging.addressiqpro.com` |
-| `development` | `http://localhost:3355` (Android emulator: `http://10.0.2.2:3355`) |
+Choose `development` to target a backend running locally during development.
 
 ## Errors
 
