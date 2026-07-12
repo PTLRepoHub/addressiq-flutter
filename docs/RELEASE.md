@@ -99,6 +99,32 @@ host was baked at all.
 backend (`localhost:4000`, `10.0.2.2:4000` on the Android emulator) and stays a
 compile-time literal in `lib/src/api/environment.dart:9-10`.
 
+### The two widget pins (files, not repository variables)
+
+`build_config.dart` also carries `kWidgetVersion` and `kWidgetIntegrity`
+(`lib/src/generated/build_config.dart:38`, `:42`). These come from **files** at
+the repo root — `.widget-version` and `.widget-integrity`
+(`scripts/bake-build-config.sh:81-85`) — which addressiq-web's
+`widget-fanout.yml` commits on every web release, from **the same build**
+`cdn.yml` uploads, so the pinned hash cannot drift from the bytes on the CDN.
+
+They pin what the verify WebView loads:
+`{cdn}/v{kWidgetVersion}/iqcollect.js` with `integrity="{kWidgetIntegrity}"`
+(`lib/src/ui/widget_html.dart:102-109`), enforced by WebKit/Chromium, with the
+vendored `assets/iqcollect.js` as the `onerror` fallback. If either file is
+empty/absent both constants bake to `''`, the CDN path is disabled and the SDK
+is bundled-only. They are outside `--strict` — a release must not fail because
+no widget has been fanned out yet. Never hand-write a hash.
+
+**The vendored `assets/iqcollect.js` is built WITHOUT the Google Maps key.**
+pub.dev scans packages for credentials and refuses to publish one containing a
+Google API key, so the fanout builds a key-free bundle for this repo only (the
+other three SDKs vendor the keyed one). Safe by construction: the SRI pin hashes
+the bytes on the **CDN**, not this file, so Flutter still fetches and verifies
+the keyed CDN bundle; the vendored copy is used only when the CDN is
+unreachable, and on that path the Maps key comes from the backend's
+`GET /api/v1/widget/config`, which already outranks any baked-in key.
+
 > ⚠ **Behaviour change — a misconfigured release now fails.** The old release
 > step `sed`'d each key and printed *"unset — keeping the checked-in default"*,
 > so a release with a missing variable published a package pointing at whatever
