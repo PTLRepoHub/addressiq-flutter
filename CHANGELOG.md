@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.9.0...v0.10.0) (2026-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* the `sandbox` environment is renamed to `staging`. The resolver still accepts the `sandbox` string as a deprecated alias.
+
+### Features
+
+* per-environment build config and CDN widget loading ([#15](https://github.com/PTLRepoHub/addressiq-flutter/issues/15)) ([ff07cd0](https://github.com/PTLRepoHub/addressiq-flutter/commit/ff07cd0a2f55979e56a41a8d3afece8dd32de1f1))
+* **widget:** re-vendor iqcollect.js from web v0.5.1 ([#18](https://github.com/PTLRepoHub/addressiq-flutter/issues/18)) ([10ca9bf](https://github.com/PTLRepoHub/addressiq-flutter/commit/10ca9bf9bb5ec6188aa78175fdbe39e22389438f))
+
 ## [0.9.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.8.0...v0.9.0) (2026-07-12)
 
 
