@@ -64,6 +64,32 @@ jobs:
           PROD_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.PROD_ADDRESSIQ_INGEST_BASE_URL }}
           PROD_ADDRESSIQ_CDN_BASE_URL: ${{ vars.PROD_ADDRESSIQ_CDN_BASE_URL }}
         run: scripts/bake-build-config.sh --strict
+
+      # `dart pub publish` refuses to publish from a dirty git tree, and the bake
+      # step above rewrites a CHECKED-IN file (lib/src/generated/build_config.dart)
+      # by design — the published package must carry the baked hosts + widget pin,
+      # not the local defaults.
+      #
+      # This never fired before because the baked output happened to be identical
+      # to the committed defaults, so the tree stayed clean. The moment a web
+      # release fanned out `.widget-version` / `.widget-integrity`, the bake
+      # produced a real diff and pub.dev rejected the publish.
+      #
+      # Commit it LOCALLY (never pushed) so the working tree is clean for pub. The
+      # commit exists only inside this runner.
+      - name: Commit the baked config locally (pub requires a clean tree)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Bake produced no diff — nothing to commit."
+          else
+            git --no-pager diff --cached --stat
+            git commit -q -m "chore: bake build config for release (local, not pushed)"
+          fi
+
       - name: Publish
         env:
           # Repository variable, not a secret — its value is meant to be visible.
