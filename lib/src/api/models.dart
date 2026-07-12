@@ -3,7 +3,8 @@ import 'environment.dart';
 class AddressIQConfig {
   final String apiKey;
   /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
-  /// `'staging'` / `'sandbox'`, or `'development'` (local backend on 3355).
+  /// `'staging'`, or `'development'` (local backend on 4000). `'sandbox'` is a
+  /// deprecated alias for `'staging'` and resolves identically.
   final String environment;
   final String sessionToken;
   /// Stable end-user identifier passed to the widget. Falls back to the
@@ -30,6 +31,14 @@ class AddressIQConfig {
   /// Effective ingest URL, resolved from [environment]. Transit events are
   /// posted here rather than to [resolvedApiUrl].
   String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
+
+  /// Effective CDN base URL for this environment.
+  ///
+  /// The verify WebView loads the widget from here, CDN-first: the immutable
+  /// `{cdn}/v{x.y.z}/iqcollect.js` with a Subresource-Integrity pin, falling
+  /// back to the bundled `assets/iqcollect.js` on outage/offline/SRI failure
+  /// (see `lib/src/ui/widget_html.dart`).
+  String get resolvedCdnUrl => resolveEnvironmentCdnUrl(environment);
 }
 
 class AddressData {

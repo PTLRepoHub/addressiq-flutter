@@ -6,7 +6,7 @@
 //
 // The API host is resolved from the selected environment — integrators never
 // pass a URL. Pick "Development" on the Login screen to hit a local backend on
-// port 3355 (Android emulators auto-use 10.0.2.2).
+// port 4000 (Android emulators auto-use 10.0.2.2).
 //
 // Screens: Login → Verification hub → Helpers → Addresses → Developer →
 // Settings. Human labels live on the hub; raw SDK method names appear only on
@@ -54,7 +54,7 @@ class _RootScreenState extends State<RootScreen> {
   int _tab = 0;
 
   // Login inputs.
-  String _environment = 'sandbox';
+  String _environment = 'staging';
   final _appUserIdCtrl = TextEditingController(text: 'cust_sample_001');
 
   // Session-derived state.
@@ -279,11 +279,11 @@ class _LoginScreen extends StatelessWidget {
             value: s._environment,
             decoration: const InputDecoration(labelText: 'Environment'),
             items: const [
-              DropdownMenuItem(value: 'sandbox', child: Text('Sandbox')),
+              DropdownMenuItem(value: 'staging', child: Text('Staging')),
               DropdownMenuItem(value: 'production', child: Text('Production')),
               DropdownMenuItem(value: 'development', child: Text('Development')),
             ],
-            onChanged: (v) => s.chooseEnvironment(v ?? 'sandbox'),
+            onChanged: (v) => s.chooseEnvironment(v ?? 'staging'),
           ),
           const SizedBox(height: 12),
           TextField(

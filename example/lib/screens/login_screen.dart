@@ -14,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String _environment = 'sandbox';
+  String _environment = 'staging';
   final _appUserId = TextEditingController(text: 'cust_sample_001');
   final _firstName = TextEditingController(text: 'Demo');
   final _lastName = TextEditingController(text: 'User');
