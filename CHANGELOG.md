@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.10.0...v0.10.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **ci:** commit the baked config locally so pub.dev sees a clean tree ([#19](https://github.com/PTLRepoHub/addressiq-flutter/issues/19)) ([fa96181](https://github.com/PTLRepoHub/addressiq-flutter/commit/fa96181652e23efcc4e64c27082317505780d073))
+
 ## [0.10.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.9.0...v0.10.0) (2026-07-12)
 
 
