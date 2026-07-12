@@ -4,6 +4,10 @@
 //   cd example && flutter run \
 //     --dart-define=API_KEY=aiq_test_... --dart-define=SESSION_TOKEN=sdk_widget_...
 //
+// The API host is resolved from the selected environment — integrators never
+// pass a URL. Pick "Development" on the Login screen to hit a local backend on
+// port 3355 (Android emulators auto-use 10.0.2.2).
+//
 // Screens: Login → Verification hub → Helpers → Addresses → Developer →
 // Settings. Human labels live on the hub; raw SDK method names appear only on
 // the Developer screen. Both integration tracks are exercised:
@@ -17,10 +21,6 @@ import 'package:addressiq_sdk/addressiq.dart';
 // directly under a prefix so both configs are usable side-by-side.
 import 'package:addressiq_sdk/src/api/models.dart' as collect;
 
-// For local dev, point at the sample server, e.g.:
-//   flutter run --dart-define=API_URL=http://10.0.2.2:3355   (Android emulator)
-//   flutter run --dart-define=API_URL=http://localhost:3355  (iOS simulator)
-const _apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://api.addressiqpro.com');
 const _apiKey = String.fromEnvironment('API_KEY', defaultValue: 'aiq_test_demo_bank_seed01');
 // Track-A Collect UI authenticates with a widget session token (Bearer).
 const _sessionToken = String.fromEnvironment('SESSION_TOKEN', defaultValue: 'sdk_widget_session_demo');
@@ -137,7 +137,6 @@ class _RootScreenState extends State<RootScreen> {
     try {
       AddressIQ.instance.initialize(AddressIQConfig(
         apiKey: _apiKey,
-        apiUrl: _apiUrl,
         environment: _environment,
       ));
       await AddressIQ.instance.setUser(SdkUser(appUserId: _appUserIdCtrl.text, firstName: 'Sample'));
@@ -210,7 +209,7 @@ class _RootScreenState extends State<RootScreen> {
       builder: (_) => AddressIQVerify(
         config: collect.AddressIQConfig(
           apiKey: _apiKey,
-          apiUrl: _apiUrl,
+          environment: _environment,
           sessionToken: _sessionToken,
           appUserId: _appUserIdCtrl.text,
           businessName: _businessName,
@@ -282,7 +281,7 @@ class _LoginScreen extends StatelessWidget {
             items: const [
               DropdownMenuItem(value: 'sandbox', child: Text('Sandbox')),
               DropdownMenuItem(value: 'production', child: Text('Production')),
-              DropdownMenuItem(value: 'local', child: Text('Local')),
+              DropdownMenuItem(value: 'development', child: Text('Development')),
             ],
             onChanged: (v) => s.chooseEnvironment(v ?? 'sandbox'),
           ),

@@ -8,7 +8,7 @@ import 'package:addressiq_sdk/addressiq.dart';
 
 /// The credentials/identity captured on the Login screen.
 class SessionData {
-  /// One of the SDK environments: 'sandbox' | 'production' | 'staging' | 'local'.
+  /// One of the SDK environments: 'sandbox' | 'production' | 'staging' | 'development'.
   final String environment;
   final String appUserId;
   final String? firstName;
@@ -87,23 +87,4 @@ String apiKeyForEnvironment(String environment) {
 const sessionTokenForCollect =
     String.fromEnvironment('SESSION_TOKEN', defaultValue: 'sdk_widget_session_demo');
 
-/// Resolve the API base URL for a given environment, mirroring the SDK's
-/// internal env→URL table so the Collect UI (which takes an explicit
-/// `apiUrl`) stays consistent with the lifecycle config.
-String apiUrlForEnvironment(String environment) {
-  const override = String.fromEnvironment('API_URL', defaultValue: '');
-  if (override.isNotEmpty) return override;
-  switch (environment) {
-    case 'production':
-      return 'https://api.addressiqpro.com';
-    case 'staging':
-    case 'sandbox':
-      return 'https://api-staging.addressiqpro.com';
-    case 'local':
-      return 'http://localhost:4000';
-    default:
-      return 'https://api-staging.addressiqpro.com';
-  }
-}
-
-const sdkEnvironments = <String>['sandbox', 'production', 'staging', 'local'];
+const sdkEnvironments = <String>['sandbox', 'production', 'staging', 'development'];

@@ -4,14 +4,19 @@ import 'models.dart';
 
 class AddressIQApi {
   final String apiUrl;
+
+  /// Dedicated ingest host for transit-event batches. Defaults to [apiUrl]
+  /// when not supplied so existing callers keep working.
+  final String ingestUrl;
   final String apiKey;
   final String sessionToken;
 
   AddressIQApi({
     required this.apiUrl,
+    String? ingestUrl,
     required this.apiKey,
     required this.sessionToken,
-  });
+  }) : ingestUrl = ingestUrl ?? apiUrl;
 
   Map<String, String> get _apiHeaders => {
     'Content-Type': 'application/json',
@@ -70,7 +75,7 @@ class AddressIQApi {
     }).toList();
 
     final res = await http.post(
-      Uri.parse('$apiUrl/v1/transit-events/batch'),
+      Uri.parse('$ingestUrl/v1/transit-events/batch'),
       headers: _apiHeaders,
       body: jsonEncode({'events': payload}),
     );

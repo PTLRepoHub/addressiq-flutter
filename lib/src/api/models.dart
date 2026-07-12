@@ -1,6 +1,10 @@
+import 'environment.dart';
+
 class AddressIQConfig {
   final String apiKey;
-  final String apiUrl;
+  /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
+  /// `'staging'` / `'sandbox'`, or `'development'` (local backend on 3355).
+  final String environment;
   final String sessionToken;
   /// Stable end-user identifier passed to the widget. Falls back to the
   /// session token when omitted (the token already binds identity server-side).
@@ -12,12 +16,20 @@ class AddressIQConfig {
 
   const AddressIQConfig({
     required this.apiKey,
-    required this.apiUrl,
     required this.sessionToken,
+    this.environment = 'production',
     this.appUserId,
     this.businessName,
     this.widgetUrl,
   });
+
+  /// Effective API URL, resolved from [environment]. Integrators never
+  /// pass a URL — the SDK owns host resolution.
+  String get resolvedApiUrl => resolveEnvironmentApiUrl(environment);
+
+  /// Effective ingest URL, resolved from [environment]. Transit events are
+  /// posted here rather than to [resolvedApiUrl].
+  String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
 }
 
 class AddressData {

@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../api/addressiq_api.dart';
+import '../api/environment.dart';
 import '../data/api_client.dart';
 import '../data/verification_repository.dart';
 import '../domain/entities.dart';
@@ -24,31 +25,22 @@ class AddressIQConfig {
   /// Tenant API key from the AddressIQ dashboard.
   final String apiKey;
 
-  /// Target environment. Drives [resolvedApiUrl] when [apiUrl] is null.
-  /// One of `'production'`, `'staging'` / `'sandbox'`, `'local'`.
+  /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
+  /// `'staging'` / `'sandbox'`, or `'development'` (local backend on 3355).
   final String environment;
-
-  /// Optional override for the API base URL. Production integrations
-  /// should leave this null — the SDK resolves the right URL from
-  /// [environment]. Override only when routing through a partner proxy
-  /// or running against a hermetic test backend.
-  final String? apiUrl;
 
   const AddressIQConfig({
     required this.apiKey,
     this.environment = 'production',
-    this.apiUrl,
   });
 
-  /// Effective API URL: explicit override if set, otherwise the env default.
-  String get resolvedApiUrl => apiUrl ?? _envDefaults[environment]!;
+  /// Effective API URL, resolved from [environment]. Integrators never
+  /// pass a URL — the SDK owns host resolution.
+  String get resolvedApiUrl => resolveEnvironmentApiUrl(environment);
 
-  static const _envDefaults = <String, String>{
-    'production': 'https://api.addressiqpro.com',
-    'staging': 'https://api-staging.addressiqpro.com',
-    'sandbox': 'https://api-staging.addressiqpro.com',
-    'local': 'http://localhost:4000',
-  };
+  /// Effective ingest URL, resolved from [environment]. Transit events are
+  /// posted here rather than to [resolvedApiUrl].
+  String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
 }
 
 class AddressIQException implements Exception {
@@ -461,6 +453,7 @@ class AddressIQ {
     try {
       final api = AddressIQApi(
         apiUrl: config.resolvedApiUrl,
+        ingestUrl: config.resolvedIngestUrl,
         apiKey: config.apiKey,
         sessionToken: '',
       );

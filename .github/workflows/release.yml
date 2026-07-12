@@ -44,6 +44,29 @@ jobs:
             sed -i "s/^version: .*/version: ${GITHUB_REF_NAME#v}/" pubspec.yaml
           fi
       - run: flutter pub get
+      - name: Bake production API URL into the package
+        env:
+          # Repository variables, not secrets — their values are meant to ship
+          # in the published package source.
+          ADDRESSIQ_API_URL: ${{ vars.ADDRESSIQ_API_URL }}
+          ADDRESSIQ_INGEST_URL: ${{ vars.ADDRESSIQ_INGEST_URL }}
+        run: |
+          set -euo pipefail
+          FILE=lib/src/generated/build_config.dart
+          if [ -z "${ADDRESSIQ_API_URL:-}" ]; then
+            echo "::warning::ADDRESSIQ_API_URL is unset — keeping the checked-in default in $FILE."
+          else
+            echo "Baking ADDRESSIQ_API_URL into $FILE"
+            sed -i "s#'https://api.addressiqpro.com'#'${ADDRESSIQ_API_URL}'#" "$FILE"
+            grep "kBuildApiUrl" "$FILE"
+          fi
+          if [ -z "${ADDRESSIQ_INGEST_URL:-}" ]; then
+            echo "::warning::ADDRESSIQ_INGEST_URL is unset — keeping the checked-in default in $FILE."
+          else
+            echo "Baking ADDRESSIQ_INGEST_URL into $FILE"
+            sed -i "s#'https://ingest-api.addressiqpro.com'#'${ADDRESSIQ_INGEST_URL}'#" "$FILE"
+            grep "kBuildIngestUrl" "$FILE"
+          fi
       - name: Publish
         env:
           # Repository variable, not a secret — its value is meant to be visible.

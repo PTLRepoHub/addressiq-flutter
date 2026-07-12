@@ -26,7 +26,7 @@ import 'package:addressiq_sdk/addressiq.dart';
 // 1. Initialize once at app start.
 AddressIQ.instance.initialize(AddressIQConfig(
   apiKey: 'aiq_...',
-  environment: 'production', // 'production' | 'staging' | 'sandbox' | 'local'
+  environment: 'production', // 'production' | 'staging' | 'sandbox' | 'development'
 ));
 
 // 2. Bind the signed-in user.
@@ -61,7 +61,7 @@ Navigator.of(context).push(MaterialPageRoute(
   builder: (_) => AddressIQVerify(
     config: collect.AddressIQConfig(
       apiKey: 'aiq_...',
-      apiUrl: 'https://api.addressiqpro.com',
+      environment: 'production',
       sessionToken: '<widget-session-token>',
     ),
     onComplete: (VerifyResult result) {
@@ -146,24 +146,26 @@ flutter create .   # generate platform folders (android/ ios/ — gitignored)
 flutter pub get    # resolves addressiq_sdk from `path: ../`
 flutter run \
   --dart-define=API_KEY=aiq_... \
-  --dart-define=API_URL=https://api.addressiqpro.com \
   --dart-define=SESSION_TOKEN=<widget-session-token>
 ```
+
+The API host is resolved from the selected environment — you never pass a URL.
+Choose the `development` environment (Login screen) to target a local backend.
 
 `example/pubspec.yaml` uses `addressiq_sdk: { path: ../ }`, so it always
 builds against this repo's SDK source.
 
 ## Environment
 
-`AddressIQConfig.environment` resolves the API base URL (override with
-`apiUrl` only for partner proxies / hermetic test backends):
+`AddressIQConfig.environment` selects which backend the SDK talks to.
+Integrators never pass a URL — the SDK owns host resolution. Just choose one
+of the supported environments:
 
-| environment | resolved URL |
-| --- | --- |
-| `production` | `https://api.addressiqpro.com` |
-| `staging` | `https://api-staging.addressiqpro.com` |
-| `sandbox` | `https://api-staging.addressiqpro.com` |
-| `local` | `http://localhost:4000` |
+- `production`
+- `sandbox`
+- `development`
+
+Choose `development` to target a backend running locally during development.
 
 ## Errors
 

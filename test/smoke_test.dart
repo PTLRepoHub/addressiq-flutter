@@ -11,14 +11,20 @@ void main() {
       expect(config.resolvedApiUrl, startsWith('https://'));
     });
 
-    test('config honors an explicit apiUrl override', () {
-      const override = 'https://proxy.partner.example';
-      const config = AddressIQConfig(
-        apiKey: 'aiq_test',
-        environment: 'production',
-        apiUrl: override,
-      );
-      expect(config.resolvedApiUrl, override);
+    test('development environment resolves to a loopback host', () {
+      const config = AddressIQConfig(apiKey: 'aiq_test', environment: 'development');
+      expect(config.resolvedApiUrl, contains(':3355'));
+    });
+
+    test('config resolves a dedicated ingest host', () {
+      const prod = AddressIQConfig(apiKey: 'aiq_test', environment: 'production');
+      expect(prod.resolvedIngestUrl, 'https://ingest-api.addressiqpro.com');
+
+      const sandbox = AddressIQConfig(apiKey: 'aiq_test', environment: 'sandbox');
+      expect(sandbox.resolvedIngestUrl, contains('ingest-api-staging'));
+
+      const dev = AddressIQConfig(apiKey: 'aiq_test', environment: 'development');
+      expect(dev.resolvedIngestUrl, contains(':3355'));
     });
 
     test('lifecycle state enum exposes the contract states', () {
