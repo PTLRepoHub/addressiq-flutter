@@ -1,0 +1,9 @@
+# Dev-only files: kept in the repo, excluded from the published pub package.
+# Prevents the "use singular directory names" pub layout warning (docs/) and
+# slims the package.
+docs/
+buf.gen.yaml
+commitlint.config.mjs
+release-please-config.json
+.release-please-manifest.json
+version.txt
