@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.6.0...v0.6.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* add .pubignore to exclude dev files from the pub package ([#5](https://github.com/PTLRepoHub/addressiq-flutter/issues/5)) ([a90f0cd](https://github.com/PTLRepoHub/addressiq-flutter/commit/a90f0cd62f4358813e145768081c722b3461fba0))
+
 ## [0.6.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.5.0...v0.6.0) (2026-07-12)
 
 
