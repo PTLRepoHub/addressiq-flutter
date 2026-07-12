@@ -2,8 +2,6 @@ class AddressIQConfig {
   final String apiKey;
   final String apiUrl;
   final String sessionToken;
-  final String? mapboxToken;
-  final String? googleMapsApiKey;
   /// Stable end-user identifier passed to the widget. Falls back to the
   /// session token when omitted (the token already binds identity server-side).
   final String? appUserId;
@@ -16,8 +14,6 @@ class AddressIQConfig {
     required this.apiKey,
     required this.apiUrl,
     required this.sessionToken,
-    this.mapboxToken,
-    this.googleMapsApiKey,
     this.appUserId,
     this.businessName,
     this.widgetUrl,
