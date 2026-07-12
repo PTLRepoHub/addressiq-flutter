@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.10.1...v0.11.0) (2026-07-12)
+
+
+### Features
+
+* **widget:** re-vendor iqcollect.js from web v0.5.3 ([#22](https://github.com/PTLRepoHub/addressiq-flutter/issues/22)) ([c89326e](https://github.com/PTLRepoHub/addressiq-flutter/commit/c89326e5261eb8a406b38cdbdbaf7e30dfcbbb75))
+
 ## [0.10.1](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.10.0...v0.10.1) (2026-07-12)
 
 
