@@ -104,13 +104,8 @@ String resolveDeploymentIngestUrl(
 /// for a CDN outage, an offline device, or an SRI mismatch (see
 /// `lib/src/ui/widget_html.dart`). `development` resolves to the local host and
 /// is excluded from the CDN path — it inlines the bundle.
-String resolveDeploymentCdnUrl(
-  String deployment, {
-  String envCdnUrl = kEnvCdnUrl,
-}) {
+String resolveDeploymentCdnUrl(String deployment) {
   _assertKnown(deployment);
-  final override = _devOverride(deployment, envCdnUrl, 'ADDRESSIQ_DEV_CDN_URL');
-  if (override != null) return override;
   switch (deployment) {
     case 'staging':
       return kStagingCdnUrl;
@@ -145,7 +140,6 @@ String resolveDeploymentCdnUrl(
 
 const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_DEV_API_URL');
 const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_DEV_INGEST_URL');
-const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_DEV_CDN_URL');
 
 /// Widget bundle URL supplied at build time. See [resolveWidgetUrl].
 const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_DEV_WIDGET_URL');

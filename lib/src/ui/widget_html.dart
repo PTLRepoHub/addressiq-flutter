@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../api/deployment.dart';
 import '../api/models.dart';
 import '../generated/build_config.dart';
 import 'theme.dart';

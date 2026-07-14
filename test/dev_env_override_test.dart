@@ -13,7 +13,6 @@ import 'package:addressiq_sdk/src/api/deployment.dart';
 
 const _lan = 'http://192.168.1.5:4000';
 const _ingest = 'http://192.168.1.5:5000';
-const _cdn = 'http://192.168.1.5:5173';
 
 void main() {
   group('host overrides in development', () {
@@ -24,14 +23,10 @@ void main() {
       );
     });
 
-    test('ingest and cdn override independently', () {
+    test('ingest overrides independently', () {
       expect(
         resolveDeploymentIngestUrl('development', envIngestUrl: _ingest),
         _ingest,
-      );
-      expect(
-        resolveDeploymentCdnUrl('development', envCdnUrl: _cdn),
-        _cdn,
       );
     });
 
@@ -57,10 +52,8 @@ void main() {
       }
     });
 
-    test('ingest and cdn are gated identically', () {
+    test('ingest is gated identically', () {
       expect(() => resolveDeploymentIngestUrl('production', envIngestUrl: _ingest),
-          throwsA(isA<StateError>()));
-      expect(() => resolveDeploymentCdnUrl('production', envCdnUrl: _cdn),
           throwsA(isA<StateError>()));
     });
 

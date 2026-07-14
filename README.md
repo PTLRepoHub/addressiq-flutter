@@ -248,7 +248,6 @@ flutter run \
 |---|---|---|
 | `ADDRESSIQ_DEV_API_URL` | `resolvedApiUrl` | the `development` literal |
 | `ADDRESSIQ_DEV_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
-| `ADDRESSIQ_DEV_CDN_URL` | `resolvedCdnUrl` | the `development` literal |
 | `ADDRESSIQ_DEV_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
 
 Each is independent — overriding the API host does not drag the others along.
