@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../api/deployment.dart';
 import '../api/models.dart';
 import '../generated/build_config.dart';
 import 'theme.dart';
@@ -83,6 +84,21 @@ String buildWidgetHtml({
     // Drives the platform-specific "Location permission" Settings screen.
     'platform': platform,
   };
+  // Development-only Maps key override (ADDRESSIQ_GOOGLE_MAPS_KEY). Normally the
+  // widget provisions its own key — it fetches one from GET /api/v1/widget/config
+  // and falls back to the key baked into the bundle — so this is absent in every
+  // shipped build. It covers the case that breaks: a local backend with no Maps
+  // key configured. resolveGoogleMapsKey throws outside `development`.
+  //
+  // NOTE: the widget only starts honouring this once addressiq-web accepts
+  // `googleMapsApiKey` on IQCollectConfig (today it reads only the remote value
+  // or its own baked literal — flow.ts:111) AND that build is re-vendored here by
+  // the fanout. Until then the field rides the wire and is ignored; the hosts
+  // above take effect immediately.
+  final devMapsKey = resolveGoogleMapsKey(config.deployment);
+  if (devMapsKey != null) {
+    cfgMap['googleMapsApiKey'] = devMapsKey;
+  }
   if (config.businessName != null) {
     // .value is the compatible API for the package's Flutter >=3.10 floor
     // (toARGB32 only exists in 3.27+).

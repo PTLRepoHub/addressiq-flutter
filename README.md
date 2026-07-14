@@ -225,6 +225,39 @@ CDN-first, integrity-pinned, bundle as the fallback
 With neither a pinned CDN build nor the bundle the SDK still **fails closed**
 (`StateError`, `widget_html.dart:114`) — it never loads an unpinned remote script.
 
+### Local development: overriding the hosts
+
+`development` resolves to a hardcoded literal — `10.0.2.2:4000` on Android, `localhost:4000`
+elsewhere. **`10.0.2.2` is an Android-*emulator* alias for your Mac**, so a physical device
+cannot reach it. Supply your own hosts with `--dart-define`:
+
+```sh
+flutter run \
+  --dart-define=ADDRESSIQ_API_URL=http://192.168.1.5:4000 \
+  --dart-define=ADDRESSIQ_INGEST_URL=http://192.168.1.5:4000 \
+  --dart-define=ADDRESSIQ_CDN_URL=http://192.168.1.5:5173 \
+  --dart-define=ADDRESSIQ_GOOGLE_MAPS_KEY=AIza…
+```
+
+| Variable | Overrides | Unset → |
+|---|---|---|
+| `ADDRESSIQ_API_URL` | `resolvedApiUrl` | the `development` literal |
+| `ADDRESSIQ_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
+| `ADDRESSIQ_CDN_URL` | `resolvedCdnUrl` | the `development` literal |
+| `ADDRESSIQ_GOOGLE_MAPS_KEY` | the widget's Maps key | the widget provisions its own |
+| `ADDRESSIQ_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
+
+Each is independent — overriding the API host does not drag the others along.
+
+**They are honoured only under `deployment: 'development'`, and throw anywhere else.** A build-time
+variable must never be able to point a shipped app at an arbitrary host, so setting one on a
+staging or production build fails loudly rather than being silently dropped.
+
+The Maps key is normally **platform-provisioned** — the widget fetches one from
+`GET /api/v1/widget/config` and falls back to the key baked into its bundle. The override exists
+for the case that breaks: a local backend with no Maps key configured. It is deliberately *not* a
+field on `AddressIQConfig`; integrators never pass a Maps key.
+
 ### Pointing the WebView at your own widget build
 
 `development` inlines the bundled asset and never fetches, so the remote-load path,

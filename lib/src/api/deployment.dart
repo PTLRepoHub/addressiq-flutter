@@ -53,8 +53,13 @@ void _assertKnown(String deployment) {
 /// Integrators never pass a URL — the SDK owns host resolution. `production` and
 /// `staging` are baked in at publish time from the `PROD_ADDRESSIQ_API_BASE_URL` /
 /// `STAGING_ADDRESSIQ_API_BASE_URL` GitHub variables (see build_config.dart).
-String resolveDeploymentApiUrl(String deployment) {
+String resolveDeploymentApiUrl(
+  String deployment, {
+  String envApiUrl = kEnvApiUrl,
+}) {
   _assertKnown(deployment);
+  final override = _devOverride(deployment, envApiUrl, 'ADDRESSIQ_API_URL');
+  if (override != null) return override;
   switch (deployment) {
     case 'staging':
       return kStagingApiUrl;
@@ -71,8 +76,14 @@ String resolveDeploymentApiUrl(String deployment) {
 /// API host. Resolution mirrors [resolveDeploymentApiUrl]; `production` and
 /// `staging` are baked from `PROD_ADDRESSIQ_INGEST_BASE_URL` /
 /// `STAGING_ADDRESSIQ_INGEST_BASE_URL`.
-String resolveDeploymentIngestUrl(String deployment) {
+String resolveDeploymentIngestUrl(
+  String deployment, {
+  String envIngestUrl = kEnvIngestUrl,
+}) {
   _assertKnown(deployment);
+  final override =
+      _devOverride(deployment, envIngestUrl, 'ADDRESSIQ_INGEST_URL');
+  if (override != null) return override;
   switch (deployment) {
     case 'staging':
       return kStagingIngestUrl;
@@ -93,8 +104,13 @@ String resolveDeploymentIngestUrl(String deployment) {
 /// for a CDN outage, an offline device, or an SRI mismatch (see
 /// `lib/src/ui/widget_html.dart`). `development` resolves to the local host and
 /// is excluded from the CDN path — it inlines the bundle.
-String resolveDeploymentCdnUrl(String deployment) {
+String resolveDeploymentCdnUrl(
+  String deployment, {
+  String envCdnUrl = kEnvCdnUrl,
+}) {
   _assertKnown(deployment);
+  final override = _devOverride(deployment, envCdnUrl, 'ADDRESSIQ_CDN_URL');
+  if (override != null) return override;
   switch (deployment) {
     case 'staging':
       return kStagingCdnUrl;
@@ -105,15 +121,72 @@ String resolveDeploymentCdnUrl(String deployment) {
   }
 }
 
-/// Widget bundle URL supplied at build time, e.g.
-///
-///     flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js
-///
-/// Empty when unset. A compile-time constant rather than an entry in
-/// build_config.dart: `scripts/bake-build-config.sh` rewrites that file wholesale
-/// at publish time, so a value parked there would be clobbered — or, worse, leak a
-/// developer's host into a released package.
+// ─── Development-only build-time overrides ──────────────────────────────────
+//
+// Supplied with --dart-define, e.g.
+//
+//     flutter run \
+//       --dart-define=ADDRESSIQ_API_URL=http://192.168.1.5:4000 \
+//       --dart-define=ADDRESSIQ_GOOGLE_MAPS_KEY=AIza…
+//
+// Empty when unset. These are compile-time constants rather than entries in
+// build_config.dart: `scripts/bake-build-config.sh` rewrites that file wholesale
+// at publish time, so a value parked there would be clobbered — or, worse, leak a
+// developer's host into a released package.
+//
+// They exist because the `development` hosts are otherwise hardcoded literals.
+// `10.0.2.2` is an Android-EMULATOR alias for the host machine; a physical device
+// cannot reach it, and until now there was nowhere to put a LAN IP — so testing
+// against real hardware meant editing SDK source.
+//
+// Every one of them is honoured ONLY in `development` and throws anywhere else.
+// A build-time variable must never be able to redirect a shipped app at an
+// arbitrary host, and a security-relevant setting that silently does nothing is
+// worse than a loud failure.
+
+const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_API_URL');
+const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_INGEST_URL');
+const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_CDN_URL');
+const String kEnvGoogleMapsKey =
+    String.fromEnvironment('ADDRESSIQ_GOOGLE_MAPS_KEY');
+
+/// Widget bundle URL supplied at build time. See [resolveWidgetUrl].
 const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_WIDGET_URL');
+
+/// Message for the [StateError] thrown when a dev-only override is set on a
+/// shipped deployment.
+String devOverrideNotDevelopmentMessage(String varName, String deployment) =>
+    'AddressIQ: $varName is a development-only override, but deployment is '
+    '"$deployment". Outside development the SDK resolves its hosts from the '
+    'values baked at release — it will not let a build-time variable point a '
+    'shipped app at an arbitrary host. Unset $varName, or set '
+    'deployment: "development".';
+
+/// Returns [env] when it is set AND [deployment] is `development`; null when
+/// unset. Throws [StateError] when it is set on any other deployment.
+String? _devOverride(String deployment, String env, String varName) {
+  if (env.isEmpty) return null;
+  if (deployment != 'development') {
+    throw StateError(devOverrideNotDevelopmentMessage(varName, deployment));
+  }
+  return env;
+}
+
+/// The Google Maps key supplied at build time, or null when unset.
+///
+/// Development only. The key is normally **platform-provisioned**: the widget
+/// fetches it from `GET /api/v1/widget/config`, falling back to the key baked
+/// into the vendored bundle. This override exists for the case that breaks —
+/// a local backend with no Maps key configured — and takes precedence over both,
+/// so it is useful precisely when the backend cannot help.
+///
+/// It is deliberately NOT a field on [AddressIQConfig]: integrators do not pass a
+/// Maps key, and this must not become a partner-facing knob.
+String? resolveGoogleMapsKey(
+  String deployment, {
+  String envGoogleMapsKey = kEnvGoogleMapsKey,
+}) =>
+    _devOverride(deployment, envGoogleMapsKey, 'ADDRESSIQ_GOOGLE_MAPS_KEY');
 
 /// Message for the [StateError] thrown by [resolveWidgetUrl] outside development.
 String widgetUrlNotDevelopmentMessage(String deployment) =>
