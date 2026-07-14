@@ -54,7 +54,7 @@ class _RootScreenState extends State<RootScreen> {
   int _tab = 0;
 
   // Login inputs.
-  String _deployment = 'staging';
+  String _deployment = 'development';
   final _appUserIdCtrl = TextEditingController(text: 'cust_sample_001');
 
   // Session-derived state.
@@ -283,7 +283,7 @@ class _LoginScreen extends StatelessWidget {
               DropdownMenuItem(value: 'production', child: Text('Production')),
               DropdownMenuItem(value: 'development', child: Text('Development')),
             ],
-            onChanged: (v) => s.chooseDeployment(v ?? 'staging'),
+            onChanged: (v) => s.chooseDeployment(v ?? 'development'),
           ),
           const SizedBox(height: 12),
           TextField(
