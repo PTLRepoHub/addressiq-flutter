@@ -25,8 +25,12 @@ import 'theme.dart';
 ///    fetching an unpinned script alongside the session config would turn a
 ///    packaging bug into remote code execution.
 ///
-/// `config.widgetUrl` remains an explicit developer override and takes
-/// precedence over everything above (serving a local bundle during development).
+/// A widget URL override — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+/// dart-define — takes precedence over everything above, but ONLY in
+/// `development`; supplied with any other deployment it throws. It serves a local
+/// bundle while iterating on the widget, and is also the only way to exercise the
+/// remote-load path from a dev build (development otherwise inlines the asset and
+/// never fetches). See `resolveWidgetUrl` in `lib/src/api/deployment.dart`.
 const String widgetBundleMissingMessage =
     'AddressIQ: the bundled widget (assets/iqcollect.js) is missing from '
     'addressiq_sdk, no CDN widget version/integrity is baked in, and no '
@@ -44,7 +48,7 @@ bool cdnWidgetEnabled(
   String widgetVersion = kWidgetVersion,
   String widgetIntegrity = kWidgetIntegrity,
 }) =>
-    config.environment != 'development' &&
+    config.deployment != 'development' &&
     config.resolvedCdnUrl.isNotEmpty &&
     widgetVersion.isNotEmpty &&
     widgetIntegrity.isNotEmpty;
@@ -92,10 +96,13 @@ String buildWidgetHtml({
   }
   final cfg = jsonEncode(cfgMap);
 
-  final widgetUrl = config.widgetUrl;
+  final widgetUrl = config.resolvedWidgetUrl;
   final String widgetScript;
   if (widgetUrl != null) {
-    // Explicit developer override — wins over both the CDN and the bundle.
+    // Development-only override (config.widgetUrl or --dart-define) — wins over
+    // both the CDN and the bundle. Deliberately unpinned: the bytes change on
+    // every widget rebuild, so an SRI hash would be meaningless. resolveWidgetUrl
+    // throws outside `development`, which is what keeps that safe.
     widgetScript = '<script src="$widgetUrl"></script>';
   } else if (cdnWidgetEnabled(config,
       widgetVersion: widgetVersion, widgetIntegrity: widgetIntegrity)) {

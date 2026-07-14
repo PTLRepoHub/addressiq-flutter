@@ -23,7 +23,7 @@
 //
 // `development` is deliberately NOT baked from CI: it points at the host
 // machine's backend, so it is a local-only concern and stays a compile-time
-// literal in `lib/src/api/environment.dart`. Never ship a build configured for
+// literal in `lib/src/api/deployment.dart`. Never ship a build configured for
 // `development`.
 const String kStagingApiUrl = 'https://api-staging.addressiqpro.com';
 const String kStagingIngestUrl = 'https://ingest-api-staging.addressiqpro.com';
