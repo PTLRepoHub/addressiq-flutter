@@ -229,13 +229,19 @@ With neither a pinned CDN build nor the bundle the SDK still **fails closed**
 
 `development` resolves to a hardcoded literal — `10.0.2.2:4000` on Android, `localhost:4000`
 elsewhere. **`10.0.2.2` is an Android-*emulator* alias for your Mac**, so a physical device
-cannot reach it. Supply your own hosts with `--dart-define`:
+cannot reach it. Supply your own hosts from a `.env` file:
+
+```sh
+cp .env.example .env         # .env is gitignored — put real values there
+# edit .env: set your LAN IP (ipconfig getifaddr en0)
+flutter run --dart-define-from-file=.env
+```
+
+`.env.example` documents every variable. Or pass them one at a time:
 
 ```sh
 flutter run \
   --dart-define=ADDRESSIQ_API_URL=http://192.168.1.5:4000 \
-  --dart-define=ADDRESSIQ_INGEST_URL=http://192.168.1.5:4000 \
-  --dart-define=ADDRESSIQ_CDN_URL=http://192.168.1.5:5173 \
   --dart-define=ADDRESSIQ_GOOGLE_MAPS_KEY=AIza…
 ```
 
