@@ -45,8 +45,9 @@ class AddressIQConfig {
   /// Effective CDN base URL for this deployment.
   ///
   /// The verify WebView loads the widget from here, CDN-first: the immutable
-  /// `{cdn}/v{x.y.z}/iqcollect.js` with a Subresource-Integrity pin, falling
-  /// back to the bundled `assets/iqcollect.js` on outage/offline/SRI failure
+  /// `{cdn}/v{x.y.z}/iqcollect.js` with a Subresource-Integrity pin. This is the
+  /// ONLY widget source — the SDK ships no bundled copy, so an outage, an offline
+  /// device, or an SRI mismatch is a hard failure reported as WIDGET_LOAD_FAILED
   /// (see `lib/src/ui/widget_html.dart`).
   String get resolvedCdnUrl => resolveDeploymentCdnUrl(deployment);
 

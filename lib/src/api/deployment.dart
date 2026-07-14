@@ -97,20 +97,34 @@ String resolveDeploymentIngestUrl(
 /// Resolves the CDN base URL for an AddressIQ [deployment]. Baked from
 /// `PROD_ADDRESSIQ_CDN_BASE_URL` / `STAGING_ADDRESSIQ_CDN_BASE_URL`.
 ///
-/// The verify WebView loads the widget from here, CDN-first: it requests the
-/// immutable, version-addressed `{cdn}/v{x.y.z}/iqcollect.js` with a
+/// The verify WebView loads the widget from here and NOWHERE ELSE: it requests
+/// the immutable, version-addressed `{cdn}/v{x.y.z}/iqcollect.js` with a
 /// Subresource-Integrity pin (`kWidgetIntegrity`), so a tampered bundle refuses
-/// to execute. The bundled `assets/iqcollect.js` stays embedded as the fallback
-/// for a CDN outage, an offline device, or an SRI mismatch (see
-/// `lib/src/ui/widget_html.dart`). `development` resolves to the local host and
-/// is excluded from the CDN path — it inlines the bundle.
-String resolveDeploymentCdnUrl(String deployment) {
+/// to execute. The SDK no longer vendors a copy of the widget, so this is the
+/// only source — a CDN outage or an SRI mismatch is a hard failure, surfaced as
+/// `WIDGET_LOAD_FAILED` rather than silently falling back.
+///
+/// `development` is NOT excluded any more. It used to inline a bundled asset and
+/// never fetch; now it loads the same pinned bundle as everything else, so a dev
+/// build finally exercises the CDN + SRI path. Its CDN does NOT resolve to the
+/// dev host — the local backend serves no widget — so it defaults to the
+/// production CDN and is overridable with `ADDRESSIQ_DEV_CDN_URL` when you are
+/// serving a widget build yourself.
+String resolveDeploymentCdnUrl(
+  String deployment, {
+  String envCdnUrl = kEnvCdnUrl,
+}) {
   _assertKnown(deployment);
+  final override = _devOverride(deployment, envCdnUrl, 'ADDRESSIQ_DEV_CDN_URL');
+  if (override != null) return override;
   switch (deployment) {
     case 'staging':
       return kStagingCdnUrl;
     case 'development':
-      return _developmentUrl();
+      // Deliberately NOT the dev host: the local backend does not serve
+      // /v{x.y.z}/iqcollect.js. Point at the real CDN so a dev build renders with
+      // no setup; override with ADDRESSIQ_DEV_CDN_URL to use your own build.
+      return kProdCdnUrl;
     default:
       return kProdCdnUrl;
   }
@@ -140,6 +154,18 @@ String resolveDeploymentCdnUrl(String deployment) {
 
 const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_DEV_API_URL');
 const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_DEV_INGEST_URL');
+
+/// CDN base a dev build loads the widget from. Defaults to the production CDN
+/// (see [resolveDeploymentCdnUrl]) — set this only when you are serving a widget
+/// build yourself:
+///
+///     cd ../addressiq-web && npx rollup -c && npx serve dist -p 5173
+///     --dart-define=ADDRESSIQ_DEV_CDN_URL=http://192.168.1.5:5173
+///
+/// Note the widget is then loaded from `{this}/v{kWidgetVersion}/iqcollect.js`
+/// WITH the SRI pin, so a locally rebuilt widget will fail the integrity check —
+/// use [kEnvWidgetUrl] (`ADDRESSIQ_DEV_WIDGET_URL`) for that, which is unpinned.
+const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_DEV_CDN_URL');
 
 /// Widget bundle URL supplied at build time. See [resolveWidgetUrl].
 const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_DEV_WIDGET_URL');

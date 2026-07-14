@@ -48,11 +48,10 @@ class AddressIQConfig {
 
   /// Effective CDN base URL for this deployment.
   ///
-  /// Nothing in the SDK fetches from it today — the verify widget ships bundled
-  /// (`assets/iqcollect.js`) and is injected inline, and it deliberately never
-  /// falls back to a remote script (see `AddressIQVerify`). This is exposed so
-  /// hosts and future asset loading resolve the same per-deployment host the
-  /// web SDK publishes to.
+  /// The verify widget is loaded from here, and ONLY from here: the SDK ships no
+  /// bundled copy, so the SRI-pinned `{cdn}/v{x.y.z}/iqcollect.js` is the single
+  /// source (see `AddressIQVerify`). Exposed so hosts resolve the same
+  /// per-deployment host the web SDK publishes to.
   String get resolvedCdnUrl => resolveDeploymentCdnUrl(deployment);
 }
 

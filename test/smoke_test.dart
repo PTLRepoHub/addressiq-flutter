@@ -60,8 +60,13 @@ void main() {
       const staging = AddressIQConfig(apiKey: 'aiq_test', deployment: 'staging');
       expect(staging.resolvedCdnUrl, 'https://cdn-staging.addressiqpro.com');
 
+      // development's CDN is NOT the dev host. The local backend serves no
+      // /v{x.y.z}/iqcollect.js, and the SDK no longer vendors a bundle — so a dev
+      // build loads the real pinned widget from the production CDN, overridable
+      // with ADDRESSIQ_DEV_CDN_URL when you are serving one yourself.
       const dev = AddressIQConfig(apiKey: 'aiq_test', deployment: 'development');
-      expect(dev.resolvedCdnUrl, contains(':4000'));
+      expect(dev.resolvedCdnUrl, 'https://cdn.addressiqpro.com');
+      expect(dev.resolvedCdnUrl, isNot(contains(':4000')));
     });
 
     test('lifecycle state enum exposes the contract states', () {

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../api/models.dart';
@@ -70,24 +69,17 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
   }
 
   Future<void> _loadWidget() async {
-    // The widget is loaded CDN-first with an SRI pin, with the bundled asset as
-    // the offline/outage fallback — see widget_html.dart for the full rationale.
-    String? bundled;
-    try {
-      bundled = await rootBundle.loadString('packages/addressiq_sdk/assets/iqcollect.js');
-    } catch (_) {
-      bundled = null;
-    }
+    // The widget is loaded from the SRI-pinned CDN copy, which is the only source
+    // — the SDK ships no bundled widget. A failed load reports WIDGET_LOAD_FAILED
+    // through the bridge; see widget_html.dart for the full rationale.
     if (!mounted) return;
-    // Fail closed: with no bundled asset, no baked CDN pin and no explicit
-    // override there is nothing safe to load.
-    if (bundled == null &&
-        widget.config.widgetUrl == null &&
-        !cdnWidgetEnabled(widget.config)) {
-      widget.onError?.call(StateError(widgetBundleMissingMessage));
+    // Fail closed: with no baked CDN pin and no explicit override there is nothing
+    // safe to load. This is a packaging bug, not a runtime condition.
+    if (widget.config.widgetUrl == null && !cdnWidgetEnabled(widget.config)) {
+      widget.onError?.call(StateError(widgetPinMissingMessage));
       return;
     }
-    await _controller.loadHtmlString(_buildHtml(bundled));
+    await _controller.loadHtmlString(_buildHtml());
   }
 
   void _onMessage(JavaScriptMessage message) {
@@ -197,11 +189,10 @@ class _AddressIQVerifyState extends State<AddressIQVerify> {
         _ => 'unknown',
       };
 
-  String _buildHtml(String? bundledJs) => buildWidgetHtml(
+  String _buildHtml() => buildWidgetHtml(
         config: widget.config,
         theme: widget.theme,
         platform: Platform.isIOS ? 'ios' : 'android',
-        bundledJs: bundledJs,
       );
 
   @override

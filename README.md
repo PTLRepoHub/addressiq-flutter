@@ -198,32 +198,39 @@ config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see belo
 
 ### How the Collect UI widget is loaded
 
-CDN-first, integrity-pinned, bundle as the fallback
-(`lib/src/ui/widget_html.dart:96-115`):
+**The SRI-pinned CDN copy is the only source. The SDK ships no bundled widget.**
 
 1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_DEV_WIDGET_URL`
-   dart-define (the field wins). Wins over everything below, but **only in
-   `development`** — supplied with any other deployment it throws a `StateError`
-   rather than being silently dropped. It is injected *without* an `integrity`
-   attribute (the bytes change on every widget rebuild, so a hash would be
-   meaningless), which is exactly why it must not reach a shipped build. See
+   dart-define (the field wins). Wins over the CDN, but **only in `development`** —
+   supplied with any other deployment it throws a `StateError` rather than being
+   silently dropped. It is injected *without* an `integrity` attribute (a widget
+   you are actively rebuilding cannot satisfy a fixed hash), which is exactly why
+   it must not reach a shipped build. See
    [Pointing the WebView at your own widget build](#pointing-the-webview-at-your-own-widget-build).
 2. **Pinned CDN build** — `{resolvedCdnUrl}/v{kWidgetVersion}/iqcollect.js`
-   loaded with `integrity="{kWidgetIntegrity}" crossorigin="anonymous"`
-   (`widget_html.dart:102-109`). WKWebView (WebKit) and Android WebView
-   (Chromium) both **enforce** `integrity`, so the CDN can only execute the exact
-   bytes hashed at build time. The pair is baked from the repo-root
-   `.widget-version` / `.widget-integrity` files that addressiq-web's release
-   fanout writes from the same build the CDN serves; CDN paths are immutable
-   (`/v{x.y.z}/`, no floating alias) because a mutable URL cannot be SRI-pinned.
-3. **Bundled `assets/iqcollect.js`** — the *fallback*, injected by
-   `onerror="__iqWidgetFallback()"`: CDN outage, offline device, or an SRI
-   mismatch all land on it. It is also the only source when the CDN path is off
-   (`development`, or an unbaked version/integrity — `cdnWidgetEnabled`,
-   `widget_html.dart:42-50`).
+   loaded with `integrity="{kWidgetIntegrity}" crossorigin="anonymous"`.
+   WKWebView (WebKit) and Android WebView (Chromium) both **enforce** `integrity`,
+   so the CDN can only execute the exact bytes hashed at build time. The pair is
+   baked from the repo-root `.widget-version` / `.widget-integrity` files that
+   addressiq-web's release fanout writes from the same build the CDN serves; CDN
+   paths are immutable (`/v{x.y.z}/`, no floating alias) because a mutable URL
+   cannot be SRI-pinned.
 
-With neither a pinned CDN build nor the bundle the SDK still **fails closed**
-(`StateError`, `widget_html.dart:114`) — it never loads an unpinned remote script.
+`development` is **not** excluded from the CDN path. It used to inline a vendored
+asset and never fetch, which meant the remote load, the SRI check and the failure
+path were only ever exercised in staging and production. A dev build now loads the
+same pinned bundle as everything else — its CDN defaults to production (the local
+backend serves no widget) and is overridable with `ADDRESSIQ_DEV_CDN_URL`.
+
+> **There is no fallback, and verification now depends on the CDN.** A CDN outage,
+> an offline device, or an SRI mismatch is a **hard failure**: `onerror` reports
+> `WIDGET_LOAD_FAILED` through `onError` rather than leaving a blank WebView. The
+> SDK previously vendored `assets/iqcollect.js` and degraded to it; that copy is
+> gone. **The collect UI cannot render without a network.**
+
+With no usable pin and no override the SDK still **fails closed** (`StateError`) —
+it never loads an unpinned remote script, because quietly fetching one alongside
+the session config would turn a packaging bug into remote code execution.
 
 ### Local development: overriding the hosts
 
@@ -248,7 +255,8 @@ flutter run \
 |---|---|---|
 | `ADDRESSIQ_DEV_API_URL` | `resolvedApiUrl` | the `development` literal |
 | `ADDRESSIQ_DEV_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
-| `ADDRESSIQ_DEV_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
+| `ADDRESSIQ_DEV_CDN_URL` | which CDN the widget loads from | the production CDN |
+| `ADDRESSIQ_DEV_WIDGET_URL` | the widget bundle (unpinned) | the pinned CDN bundle |
 
 Each is independent — overriding the API host does not drag the others along.
 
@@ -257,11 +265,10 @@ variable must never be able to point a shipped app at an arbitrary host, so sett
 staging or production build fails loudly rather than being silently dropped.
 ### Pointing the WebView at your own widget build
 
-`development` inlines the bundled asset and never fetches, so the remote-load path,
-the SRI enforcement, and the `onerror` fallback are otherwise only exercised in
-staging/prod — the three things most likely to break are the three you cannot test
-locally. The override closes that, and gives you live reload while iterating on the
-widget itself.
+`development` now loads the same SRI-pinned CDN bundle as production, so the remote
+load and the integrity check are exercised locally by default. This override exists
+for the other job: **live reload while you are changing the widget itself.** It is
+unpinned, because a widget you are rebuilding cannot satisfy a fixed SRI hash.
 
 Serve a local build of the widget:
 
@@ -296,22 +303,9 @@ Three details in that markup are load-bearing — each fails *silently* toward
 
 - `crossorigin="anonymous"` is **mandatory**: without it the cross-origin
   response is opaque, `integrity` cannot be evaluated, and every load hard-fails
-  into the fallback.
 - **Script order**: a blocking classic `<script>` fires `onerror` before the
   parser reaches the next inline script, so `__iqWidgetFallback()` is defined
   *before* the remote tag (which carries no `defer`/`async`).
-- The inlined fallback bundle is **escaped** (`_scriptSafe`,
-  `widget_html.dart:149`) — it contains `</script>`-alike sequences that would
-  otherwise terminate the tag.
-
-> **The bundled asset in this package carries no Google Maps key.** pub.dev scans
-> published packages for credentials and rejects one containing a Google API key,
-> so the vendored `assets/iqcollect.js` is built key-free. This costs nothing: the
-> bundle is only the offline fallback and is never the SRI-checked artifact —
-> Flutter fetches and integrity-verifies the **keyed** bundle from the CDN exactly
-> like the other SDKs, and on the fallback path the Maps key arrives from the
-> backend's `GET /api/v1/widget/config`, which takes priority over any key baked
-> into a bundle anyway (`addressiq-web/src/flow.ts:111`).
 
 There are two exported `AddressIQConfig` classes — the lifecycle one
 (`lib/src/lifecycle/addressiq.dart:28-53`, re-exported by the barrel) and the
@@ -397,8 +391,8 @@ npx serve dist -p 5173
 Then set `ADDRESSIQ_DEV_WIDGET_URL` to `http://<host>:5173/iqcollect.js` for live
 reload without re-vendoring. Point it at a **published** URL
 (`https://cdn.addressiqpro.com/v0.5.3/iqcollect.js`) instead to exercise the
-remote-load + SRI + `onerror`-fallback paths, which `development` otherwise never
-takes because it inlines the bundled asset.
+pinned CDN bundle — though `development` now loads that by default anyway, so this
+is only useful for pointing at a *different* published version.
 
 A `file://` path will **not** work: the Android emulator is a separate VM and
 cannot see your filesystem, and a physical device certainly cannot. It has to be
