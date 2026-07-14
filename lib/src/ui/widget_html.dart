@@ -25,7 +25,7 @@ import 'theme.dart';
 ///    fetching an unpinned script alongside the session config would turn a
 ///    packaging bug into remote code execution.
 ///
-/// A widget URL override — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+/// A widget URL override — `config.widgetUrl`, or the `ADDRESSIQ_DEV_WIDGET_URL`
 /// dart-define — takes precedence over everything above, but ONLY in
 /// `development`; supplied with any other deployment it throws. It serves a local
 /// bundle while iterating on the widget, and is also the only way to exercise the

@@ -201,7 +201,7 @@ config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see belo
 CDN-first, integrity-pinned, bundle as the fallback
 (`lib/src/ui/widget_html.dart:96-115`):
 
-1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_DEV_WIDGET_URL`
    dart-define (the field wins). Wins over everything below, but **only in
    `development`** — supplied with any other deployment it throws a `StateError`
    rather than being silently dropped. It is injected *without* an `integrity`
@@ -225,6 +225,36 @@ CDN-first, integrity-pinned, bundle as the fallback
 With neither a pinned CDN build nor the bundle the SDK still **fails closed**
 (`StateError`, `widget_html.dart:114`) — it never loads an unpinned remote script.
 
+### Local development: overriding the hosts
+
+`development` resolves to a hardcoded literal — `10.0.2.2:4000` on Android, `localhost:4000`
+elsewhere. **`10.0.2.2` is an Android-*emulator* alias for your Mac**, so a physical device
+cannot reach it. Supply your own hosts from a `.env` file:
+
+```sh
+cp .env.example .env         # .env is gitignored — put real values there
+# edit .env: set your LAN IP (ipconfig getifaddr en0)
+flutter run --dart-define-from-file=.env
+```
+
+`.env.example` documents every variable. Or pass them one at a time:
+
+```sh
+flutter run \
+  --dart-define=ADDRESSIQ_DEV_API_URL=http://192.168.1.5:4000 \
+```
+
+| Variable | Overrides | Unset → |
+|---|---|---|
+| `ADDRESSIQ_DEV_API_URL` | `resolvedApiUrl` | the `development` literal |
+| `ADDRESSIQ_DEV_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
+| `ADDRESSIQ_DEV_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
+
+Each is independent — overriding the API host does not drag the others along.
+
+**They are honoured only under `deployment: 'development'`, and throw anywhere else.** A build-time
+variable must never be able to point a shipped app at an arbitrary host, so setting one on a
+staging or production build fails loudly rather than being silently dropped.
 ### Pointing the WebView at your own widget build
 
 `development` inlines the bundled asset and never fetches, so the remote-load path,
@@ -243,9 +273,9 @@ npx serve dist -p 5173
 Then run against it — no re-vendoring, no SDK rebuild:
 
 ```sh
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js   # Android emulator
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://localhost:5173/iqcollect.js  # iOS simulator
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://192.168.1.x:5173/iqcollect.js # physical device (LAN IP)
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js   # Android emulator
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://localhost:5173/iqcollect.js  # iOS simulator
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://192.168.1.x:5173/iqcollect.js # physical device (LAN IP)
 ```
 
 A `file://` path to the bundle on your Mac will **not** work: the Android emulator is
@@ -335,3 +365,89 @@ unset**. See [`docs/RELEASE.md`](docs/RELEASE.md).
 
 Fork, branch, PR. CI runs `flutter analyze` + `flutter test` on the SDK and
 analyzes the example against the local SDK on every push/PR.
+
+## Running the SDK locally, end to end
+
+Everything below is **development-only**. Every override is honoured solely under
+the `development` deployment and **throws** on a staging or production build, even
+if the variable is set — a build-time value must never be able to point a shipped
+app at an arbitrary host.
+
+### 1. Start the backend
+
+```sh
+cd addressiq-node-backend
+cp .env.example .env          # set GOOGLE_MAPS_API_KEY if you want the map to load
+npm install && npm start      # http://localhost:4000
+```
+
+It must bind `0.0.0.0`, not `127.0.0.1`, or nothing off-machine can reach it.
+
+### 2. (Optional) Serve the widget yourself
+
+Only needed if you are **changing the widget**. Otherwise the SDK uses the widget
+it already ships.
+
+```sh
+cd addressiq-web
+npx rollup -c                 # → dist/iqcollect.js
+npx serve dist -p 5173
+```
+
+Then set `ADDRESSIQ_DEV_WIDGET_URL` to `http://<host>:5173/iqcollect.js` for live
+reload without re-vendoring. Point it at a **published** URL
+(`https://cdn.addressiqpro.com/v0.5.3/iqcollect.js`) instead to exercise the
+remote-load + SRI + `onerror`-fallback paths, which `development` otherwise never
+takes because it inlines the bundled asset.
+
+A `file://` path will **not** work: the Android emulator is a separate VM and
+cannot see your filesystem, and a physical device certainly cannot. It has to be
+served over HTTP.
+
+### 3. Point the SDK at your machine
+
+```sh
+cp .env.example .env
+```
+
+**Which host do I use?**
+
+| Running on | Host |
+|---|---|
+| Android emulator | `10.0.2.2` — a special alias for your machine's localhost |
+| iOS simulator | `localhost` — it shares your Mac's network |
+| **Physical device (either OS)** | your **LAN IP** — `ipconfig getifaddr en0` |
+
+The default is the emulator/simulator literal, which is exactly why these
+overrides exist: **a physical device cannot reach `10.0.2.2` or `localhost`.**
+
+Then run:
+
+```sh
+flutter run --dart-define-from-file=.env
+```
+
+### 4. Android only: allow plain HTTP
+
+A LAN IP over plain `http://` is blocked by default. In your **debug** manifest:
+
+```xml
+<application android:usesCleartextTraffic="true" …>
+```
+
+Debug only — never in a release. (A `network_security_config` scoped to that one
+host is the tighter version.)
+
+### Troubleshooting
+
+- **Requests hang / connection refused on a real device** — the backend is bound to
+  `127.0.0.1`. Bind `0.0.0.0`.
+- **Works on the emulator, fails on a device** — you are still on `10.0.2.2`. Set a
+  LAN IP.
+- **Android: `net::ERR_CLEARTEXT_NOT_PERMITTED`** — step 4.
+- **The map is blank** — your backend has no Maps key. `GET /api/v1/widget/config`
+  supplies it; set `GOOGLE_MAPS_API_KEY` in the backend's `.env`. (The key is
+  platform-provisioned; no native SDK accepts one, because the key is used by the
+  widget, not by native code.)
+- **An override "does nothing"** — check `deployment` is `development`. Anywhere
+  else it throws rather than being silently ignored, so you would have seen an error.

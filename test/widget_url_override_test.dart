@@ -54,7 +54,7 @@ void main() {
         expect(
           () => resolveWidgetUrl(env, null, envWidgetUrl: _define),
           throwsA(isA<StateError>()),
-          reason: 'ADDRESSIQ_WIDGET_URL must not be honoured in "$env"',
+          reason: 'ADDRESSIQ_DEV_WIDGET_URL must not be honoured in "$env"',
         );
       }
     });
