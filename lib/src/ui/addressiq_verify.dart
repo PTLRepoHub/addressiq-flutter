@@ -22,7 +22,7 @@ import 'widget_html.dart';
 /// AddressIQVerify(
 ///   config: AddressIQConfig(
 ///     apiKey: 'fsp_...',
-///     environment: 'production',
+///     deployment: 'production',
 ///     sessionToken: '...',
 ///     appUserId: 'cust_123',
 ///   ),

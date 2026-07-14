@@ -4,7 +4,7 @@
 //   cd example && flutter run \
 //     --dart-define=API_KEY=aiq_test_... --dart-define=SESSION_TOKEN=sdk_widget_...
 //
-// The API host is resolved from the selected environment — integrators never
+// The API host is resolved from the selected deployment — integrators never
 // pass a URL. Pick "Development" on the Login screen to hit a local backend on
 // port 4000 (Android emulators auto-use 10.0.2.2).
 //
@@ -54,7 +54,7 @@ class _RootScreenState extends State<RootScreen> {
   int _tab = 0;
 
   // Login inputs.
-  String _environment = 'staging';
+  String _deployment = 'staging';
   final _appUserIdCtrl = TextEditingController(text: 'cust_sample_001');
 
   // Session-derived state.
@@ -74,9 +74,9 @@ class _RootScreenState extends State<RootScreen> {
     setState(() => _lifecycle = AddressIQ.instance.getVerificationState().state.name);
   }
 
-  /// Public setter so the Login screen can change the environment without
+  /// Public setter so the Login screen can change the deployment without
   /// reaching into the framework's `@protected` setState.
-  void chooseEnvironment(String value) => setState(() => _environment = value);
+  void chooseDeployment(String value) => setState(() => _deployment = value);
 
   void _remember(String? locationCode) {
     if (locationCode == null || locationCode.isEmpty) return;
@@ -137,7 +137,7 @@ class _RootScreenState extends State<RootScreen> {
     try {
       AddressIQ.instance.initialize(AddressIQConfig(
         apiKey: _apiKey,
-        environment: _environment,
+        deployment: _deployment,
       ));
       await AddressIQ.instance.setUser(SdkUser(appUserId: _appUserIdCtrl.text, firstName: 'Sample'));
       _refreshLifecycle();
@@ -209,7 +209,7 @@ class _RootScreenState extends State<RootScreen> {
       builder: (_) => AddressIQVerify(
         config: collect.AddressIQConfig(
           apiKey: _apiKey,
-          environment: _environment,
+          deployment: _deployment,
           sessionToken: _sessionToken,
           appUserId: _appUserIdCtrl.text,
           businessName: _businessName,
@@ -276,14 +276,14 @@ class _LoginScreen extends StatelessWidget {
           const Text('Sign in', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: s._environment,
-            decoration: const InputDecoration(labelText: 'Environment'),
+            value: s._deployment,
+            decoration: const InputDecoration(labelText: 'Deployment'),
             items: const [
               DropdownMenuItem(value: 'staging', child: Text('Staging')),
               DropdownMenuItem(value: 'production', child: Text('Production')),
               DropdownMenuItem(value: 'development', child: Text('Development')),
             ],
-            onChanged: (v) => s.chooseEnvironment(v ?? 'staging'),
+            onChanged: (v) => s.chooseDeployment(v ?? 'staging'),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -471,7 +471,7 @@ class _SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        ListTile(title: const Text('Environment'), trailing: Text(s._environment)),
+        ListTile(title: const Text('Deployment'), trailing: Text(s._deployment)),
         ListTile(title: const Text('App user'), trailing: Text(s._appUserIdCtrl.text)),
         ListTile(title: const Text('Lifecycle'), trailing: Text(s._lifecycle)),
         const SizedBox(height: 12),

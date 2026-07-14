@@ -26,7 +26,7 @@ import 'package:addressiq_sdk/addressiq.dart';
 // 1. Initialize once at app start.
 AddressIQ.instance.initialize(AddressIQConfig(
   apiKey: 'aiq_...',
-  environment: 'production', // 'production' | 'staging' | 'development'
+  deployment: 'production', // 'production' | 'staging' | 'development'
 ));
 
 // 2. Bind the signed-in user.
@@ -61,7 +61,7 @@ Navigator.of(context).push(MaterialPageRoute(
   builder: (_) => AddressIQVerify(
     config: collect.AddressIQConfig(
       apiKey: 'aiq_...',
-      environment: 'production',
+      deployment: 'production',
       sessionToken: '<widget-session-token>',
     ),
     onComplete: (VerifyResult result) {
@@ -78,7 +78,7 @@ Navigator.of(context).push(MaterialPageRoute(
 
 | Method | Purpose |
 | --- | --- |
-| `initialize(AddressIQConfig)` | Configure the SDK (apiKey + environment). |
+| `initialize(AddressIQConfig)` | Configure the SDK (apiKey + deployment). |
 | `setUser(SdkUser)` | Bind the active app user. |
 | `startVerification(StartVerificationArgs)` | Start a **digital** verification (`POST …/verifications/digital`, `digitalProvider` defaults to `internal_ai`). |
 | `startPhysicalVerification(StartPhysicalArgs)` | Start a **physical** (agent/KYC) verification. |
@@ -149,35 +149,48 @@ flutter run \
   --dart-define=SESSION_TOKEN=<widget-session-token>
 ```
 
-The API host is resolved from the selected environment — you never pass a URL.
-Choose the `development` environment (Login screen) to target a local backend.
+The API host is resolved from the selected deployment — you never pass a URL.
+Choose the `development` deployment (Login screen) to target a local backend.
 
 `example/pubspec.yaml` uses `addressiq_sdk: { path: ../ }`, so it always
 builds against this repo's SDK source.
 
-## Environment
+## Deployment vs sandbox — two different things
 
-`AddressIQConfig.environment` selects which backend the SDK talks to.
-Integrators never pass a URL — the SDK owns host resolution. Just choose one
-of the supported environments:
+These are orthogonal, and conflating them is the most common integration mistake:
+
+| | What it selects | How you set it |
+|---|---|---|
+| **Deployment** | Which AddressIQ **hosts** you talk to | `AddressIQConfig.deployment` |
+| **Tenant mode** | Whether your data is **sandbox or production** | **Which API key you paste** |
+
+`AddressIQConfig.deployment` selects which backend the SDK talks to. Integrators
+never pass a URL — the SDK owns host resolution. Choose one of:
 
 - `production`
-- `staging` (`sandbox` is a deprecated alias that resolves identically)
+- `staging`
 - `development`
 
-`staging` is canonical across all AddressIQ SDKs. `sandbox` was the former
-Flutter spelling and is still accepted by the resolver
-(`lib/src/api/environment.dart:26`), so existing integrators keep working.
+Anything else throws. Notably **`'sandbox'` is rejected** — it is *not* a
+deployment. Sandbox-vs-production is a property of your **API key**: `aiq_test_…`
+resolves to a sandbox tenant server-side, `aiq_live_…` to a production one. The
+SDK never sends a mode, and cannot override the key's.
 
-Choose `development` to target a backend running locally during development.
+The two combine freely: a `aiq_test_…` key on the `production` deployment is
+still sandbox data; a `aiq_live_…` key on `staging` is still production-mode data.
 
-Each environment resolves three hosts — API, ingest, and CDN. `production` and
+> **Migrating from `environment:`?** `environment: 'sandbox'` → drop the field and
+> use a sandbox key (`aiq_test_…`), which is almost certainly what you meant.
+> Only use `deployment: 'staging'` if you specifically wanted the pre-production
+> *hosts*.
+
+Each deployment resolves three hosts — API, ingest, and CDN. `production` and
 `staging` are baked in at publish time from GitHub repository variables (see
 [`docs/RELEASE.md`](docs/RELEASE.md)); `development` is local-only and never
 baked.
 
 ```dart
-final config = AddressIQConfig(apiKey: 'aiq_...', environment: 'staging');
+final config = AddressIQConfig(apiKey: 'aiq_test_...', deployment: 'staging');
 config.resolvedApiUrl;    // API host
 config.resolvedIngestUrl; // telemetry ingest host
 config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see below
@@ -188,7 +201,13 @@ config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see belo
 CDN-first, integrity-pinned, bundle as the fallback
 (`lib/src/ui/widget_html.dart:96-115`):
 
-1. **`config.widgetUrl`** — explicit developer override, wins over everything.
+1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+   dart-define (the field wins). Wins over everything below, but **only in
+   `development`** — supplied with any other deployment it throws a `StateError`
+   rather than being silently dropped. It is injected *without* an `integrity`
+   attribute (the bytes change on every widget rebuild, so a hash would be
+   meaningless), which is exactly why it must not reach a shipped build. See
+   [Pointing the WebView at your own widget build](#pointing-the-webview-at-your-own-widget-build).
 2. **Pinned CDN build** — `{resolvedCdnUrl}/v{kWidgetVersion}/iqcollect.js`
    loaded with `integrity="{kWidgetIntegrity}" crossorigin="anonymous"`
    (`widget_html.dart:102-109`). WKWebView (WebKit) and Android WebView
@@ -205,6 +224,42 @@ CDN-first, integrity-pinned, bundle as the fallback
 
 With neither a pinned CDN build nor the bundle the SDK still **fails closed**
 (`StateError`, `widget_html.dart:114`) — it never loads an unpinned remote script.
+
+### Pointing the WebView at your own widget build
+
+`development` inlines the bundled asset and never fetches, so the remote-load path,
+the SRI enforcement, and the `onerror` fallback are otherwise only exercised in
+staging/prod — the three things most likely to break are the three you cannot test
+locally. The override closes that, and gives you live reload while iterating on the
+widget itself.
+
+Serve a local build of the widget:
+
+```sh
+cd ../addressiq-web && npx rollup -c      # → dist/iqcollect.js
+npx serve dist -p 5173
+```
+
+Then run against it — no re-vendoring, no SDK rebuild:
+
+```sh
+flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js   # Android emulator
+flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://localhost:5173/iqcollect.js  # iOS simulator
+flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://192.168.1.x:5173/iqcollect.js # physical device (LAN IP)
+```
+
+A `file://` path to the bundle on your Mac will **not** work: the Android emulator is
+a separate VM with no view of your filesystem, and a physical device has none at all.
+It has to be served over HTTP — which has the side benefit of exercising the same
+remote `<script src>` machinery you actually ship.
+
+Point the same define at a **published** URL
+(`https://cdn.addressiqpro.com/v{x.y.z}/iqcollect.js`) to verify the real CDN bundle
+from a dev build.
+
+Requires `deployment: 'development'`. On Android, a plain-HTTP local host also needs
+`android:usesCleartextTraffic="true"` in the **debug** manifest (or a
+`network_security_config` scoped to `10.0.2.2`) — debug only, never in a release.
 
 Three details in that markup are load-bearing — each fails *silently* toward
 "looks fine, but never actually uses the CDN":

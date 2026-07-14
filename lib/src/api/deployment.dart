@@ -1,0 +1,154 @@
+import 'dart:io' show Platform;
+
+import '../generated/build_config.dart';
+
+/// The AddressIQ *deployment* an SDK build talks to — i.e. WHICH HOSTS.
+///
+/// This is not the tenant's mode. Sandbox-vs-production is a property of the API
+/// KEY (`aiq_test_…` resolves to a SANDBOX App row server-side, `aiq_live_…` to a
+/// PRODUCTION one) and is decided entirely by the backend on every request — the
+/// SDK neither sends it nor can influence it. The two axes are orthogonal: a test
+/// key against the production deployment is still sandbox; a live key against the
+/// staging deployment is still production-mode data.
+///
+/// `'sandbox'` was previously accepted here as an alias for `'staging'`, which
+/// asserted that sandbox was a deployment. It is not, and it is now rejected.
+const Set<String> kDeployments = {'production', 'staging', 'development'};
+
+/// Local development backend, running on the host machine. Android emulators
+/// reach it via the host-loopback alias `10.0.2.2`; everything else uses
+/// `localhost`. Deliberately NOT baked from CI — it is a local-only concern.
+/// Never ship a build configured for `development`.
+String _developmentUrl() =>
+    Platform.isAndroid ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+
+/// Message for the [ArgumentError] thrown on an unrecognised deployment.
+String unknownDeploymentMessage(String deployment) {
+  final hint = deployment == 'sandbox'
+      ? ' "sandbox" is not a deployment — it is a tenant mode, and it is chosen by '
+          'the API key you paste (aiq_test_… for sandbox, aiq_live_… for production), '
+          'not by this field. If you meant the pre-production HOSTS, use "staging"; '
+          'otherwise drop this field and use a sandbox key.'
+      : '';
+  return 'AddressIQ: unknown deployment "$deployment". Expected one of '
+      '${kDeployments.join(', ')}.$hint';
+}
+
+/// Validates [deployment], throwing [ArgumentError] if it is not one of
+/// [kDeployments].
+///
+/// Deliberately strict. The previous resolvers fell through a `default:` arm to
+/// the production hosts, so a typo — or the now-removed `'sandbox'` — would
+/// silently point a build at PRODUCTION. Failing loudly is the only safe
+/// behaviour for a field that selects which backend receives real user data.
+void _assertKnown(String deployment) {
+  if (!kDeployments.contains(deployment)) {
+    throw ArgumentError.value(
+        deployment, 'deployment', unknownDeploymentMessage(deployment));
+  }
+}
+
+/// Resolves the API base URL for an AddressIQ [deployment].
+///
+/// Integrators never pass a URL — the SDK owns host resolution. `production` and
+/// `staging` are baked in at publish time from the `PROD_ADDRESSIQ_API_BASE_URL` /
+/// `STAGING_ADDRESSIQ_API_BASE_URL` GitHub variables (see build_config.dart).
+String resolveDeploymentApiUrl(String deployment) {
+  _assertKnown(deployment);
+  switch (deployment) {
+    case 'staging':
+      return kStagingApiUrl;
+    case 'development':
+      return _developmentUrl();
+    default:
+      return kProdApiUrl;
+  }
+}
+
+/// Resolves the ingest base URL for an AddressIQ [deployment].
+///
+/// Transit-event batches are posted to a dedicated ingest host rather than the
+/// API host. Resolution mirrors [resolveDeploymentApiUrl]; `production` and
+/// `staging` are baked from `PROD_ADDRESSIQ_INGEST_BASE_URL` /
+/// `STAGING_ADDRESSIQ_INGEST_BASE_URL`.
+String resolveDeploymentIngestUrl(String deployment) {
+  _assertKnown(deployment);
+  switch (deployment) {
+    case 'staging':
+      return kStagingIngestUrl;
+    case 'development':
+      return _developmentUrl();
+    default:
+      return kProdIngestUrl;
+  }
+}
+
+/// Resolves the CDN base URL for an AddressIQ [deployment]. Baked from
+/// `PROD_ADDRESSIQ_CDN_BASE_URL` / `STAGING_ADDRESSIQ_CDN_BASE_URL`.
+///
+/// The verify WebView loads the widget from here, CDN-first: it requests the
+/// immutable, version-addressed `{cdn}/v{x.y.z}/iqcollect.js` with a
+/// Subresource-Integrity pin (`kWidgetIntegrity`), so a tampered bundle refuses
+/// to execute. The bundled `assets/iqcollect.js` stays embedded as the fallback
+/// for a CDN outage, an offline device, or an SRI mismatch (see
+/// `lib/src/ui/widget_html.dart`). `development` resolves to the local host and
+/// is excluded from the CDN path — it inlines the bundle.
+String resolveDeploymentCdnUrl(String deployment) {
+  _assertKnown(deployment);
+  switch (deployment) {
+    case 'staging':
+      return kStagingCdnUrl;
+    case 'development':
+      return _developmentUrl();
+    default:
+      return kProdCdnUrl;
+  }
+}
+
+/// Widget bundle URL supplied at build time, e.g.
+///
+///     flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js
+///
+/// Empty when unset. A compile-time constant rather than an entry in
+/// build_config.dart: `scripts/bake-build-config.sh` rewrites that file wholesale
+/// at publish time, so a value parked there would be clobbered — or, worse, leak a
+/// developer's host into a released package.
+const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_WIDGET_URL');
+
+/// Message for the [StateError] thrown by [resolveWidgetUrl] outside development.
+String widgetUrlNotDevelopmentMessage(String deployment) =>
+    'AddressIQ: the widget URL override is development-only, but deployment is '
+    '"$deployment". Outside development the SDK loads the SRI-pinned CDN bundle '
+    'or the vendored asset — it will not fetch an unpinned script from an '
+    'arbitrary host. Drop the override, or set deployment: "development".';
+
+/// The effective widget bundle override, or null when there is none.
+///
+/// Serves two development jobs: pointing the WebView at a locally served
+/// `dist/iqcollect.js` while iterating on the widget (live reload, no re-vendoring),
+/// and pointing it at the *published* CDN URL to exercise the remote-load path —
+/// which `development` otherwise never takes, since it inlines the bundled asset.
+///
+/// Honoured ONLY in `development`, and injected WITHOUT an integrity attribute
+/// (the bytes change on every widget rebuild, so a hash would be meaningless).
+/// That is precisely why it must not reach staging or production: an unpinned
+/// remote script alongside the session config is the remote-code-execution hole
+/// the rest of the widget loader fails closed to avoid. Supplied anywhere else it
+/// throws rather than being silently dropped — a security-relevant setting that
+/// quietly does nothing is worse than a loud failure.
+///
+/// [configWidgetUrl] (set in code) wins over [envWidgetUrl] (the `--dart-define`).
+String? resolveWidgetUrl(
+  String deployment,
+  String? configWidgetUrl, {
+  String envWidgetUrl = kEnvWidgetUrl,
+}) {
+  final override = (configWidgetUrl != null && configWidgetUrl.isNotEmpty)
+      ? configWidgetUrl
+      : (envWidgetUrl.isNotEmpty ? envWidgetUrl : null);
+  if (override == null) return null;
+  if (deployment != 'development') {
+    throw StateError(widgetUrlNotDevelopmentMessage(deployment));
+  }
+  return override;
+}
