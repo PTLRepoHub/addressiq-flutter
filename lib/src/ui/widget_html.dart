@@ -26,7 +26,7 @@ import 'theme.dart';
 ///    fetching an unpinned script alongside the session config would turn a
 ///    packaging bug into remote code execution.
 ///
-/// A widget URL override — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+/// A widget URL override — `config.widgetUrl`, or the `ADDRESSIQ_DEV_WIDGET_URL`
 /// dart-define — takes precedence over everything above, but ONLY in
 /// `development`; supplied with any other deployment it throws. It serves a local
 /// bundle while iterating on the widget, and is also the only way to exercise the
@@ -84,7 +84,7 @@ String buildWidgetHtml({
     // Drives the platform-specific "Location permission" Settings screen.
     'platform': platform,
   };
-  // Development-only Maps key override (ADDRESSIQ_GOOGLE_MAPS_KEY). Normally the
+  // Development-only Maps key override (ADDRESSIQ_DEV_GOOGLE_MAPS_KEY). Normally the
   // widget provisions its own key — it fetches one from GET /api/v1/widget/config
   // and falls back to the key baked into the bundle — so this is absent in every
   // shipped build. It covers the case that breaks: a local backend with no Maps

@@ -58,7 +58,7 @@ String resolveDeploymentApiUrl(
   String envApiUrl = kEnvApiUrl,
 }) {
   _assertKnown(deployment);
-  final override = _devOverride(deployment, envApiUrl, 'ADDRESSIQ_API_URL');
+  final override = _devOverride(deployment, envApiUrl, 'ADDRESSIQ_DEV_API_URL');
   if (override != null) return override;
   switch (deployment) {
     case 'staging':
@@ -82,7 +82,7 @@ String resolveDeploymentIngestUrl(
 }) {
   _assertKnown(deployment);
   final override =
-      _devOverride(deployment, envIngestUrl, 'ADDRESSIQ_INGEST_URL');
+      _devOverride(deployment, envIngestUrl, 'ADDRESSIQ_DEV_INGEST_URL');
   if (override != null) return override;
   switch (deployment) {
     case 'staging':
@@ -109,7 +109,7 @@ String resolveDeploymentCdnUrl(
   String envCdnUrl = kEnvCdnUrl,
 }) {
   _assertKnown(deployment);
-  final override = _devOverride(deployment, envCdnUrl, 'ADDRESSIQ_CDN_URL');
+  final override = _devOverride(deployment, envCdnUrl, 'ADDRESSIQ_DEV_CDN_URL');
   if (override != null) return override;
   switch (deployment) {
     case 'staging':
@@ -126,8 +126,8 @@ String resolveDeploymentCdnUrl(
 // Supplied with --dart-define, e.g.
 //
 //     flutter run \
-//       --dart-define=ADDRESSIQ_API_URL=http://192.168.1.5:4000 \
-//       --dart-define=ADDRESSIQ_GOOGLE_MAPS_KEY=AIza…
+//       --dart-define=ADDRESSIQ_DEV_API_URL=http://192.168.1.5:4000 \
+//       --dart-define=ADDRESSIQ_DEV_GOOGLE_MAPS_KEY=AIza…
 //
 // Empty when unset. These are compile-time constants rather than entries in
 // build_config.dart: `scripts/bake-build-config.sh` rewrites that file wholesale
@@ -144,14 +144,14 @@ String resolveDeploymentCdnUrl(
 // arbitrary host, and a security-relevant setting that silently does nothing is
 // worse than a loud failure.
 
-const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_API_URL');
-const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_INGEST_URL');
-const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_CDN_URL');
+const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_DEV_API_URL');
+const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_DEV_INGEST_URL');
+const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_DEV_CDN_URL');
 const String kEnvGoogleMapsKey =
-    String.fromEnvironment('ADDRESSIQ_GOOGLE_MAPS_KEY');
+    String.fromEnvironment('ADDRESSIQ_DEV_GOOGLE_MAPS_KEY');
 
 /// Widget bundle URL supplied at build time. See [resolveWidgetUrl].
-const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_WIDGET_URL');
+const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_DEV_WIDGET_URL');
 
 /// Message for the [StateError] thrown when a dev-only override is set on a
 /// shipped deployment.
@@ -186,7 +186,7 @@ String? resolveGoogleMapsKey(
   String deployment, {
   String envGoogleMapsKey = kEnvGoogleMapsKey,
 }) =>
-    _devOverride(deployment, envGoogleMapsKey, 'ADDRESSIQ_GOOGLE_MAPS_KEY');
+    _devOverride(deployment, envGoogleMapsKey, 'ADDRESSIQ_DEV_GOOGLE_MAPS_KEY');
 
 /// Message for the [StateError] thrown by [resolveWidgetUrl] outside development.
 String widgetUrlNotDevelopmentMessage(String deployment) =>

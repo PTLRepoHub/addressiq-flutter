@@ -53,7 +53,7 @@ void main() {
         expect(
           () => resolveDeploymentApiUrl(d, envApiUrl: _lan),
           throwsA(isA<StateError>()),
-          reason: 'ADDRESSIQ_API_URL must not be honoured in "$d"',
+          reason: 'ADDRESSIQ_DEV_API_URL must not be honoured in "$d"',
         );
       }
     });
@@ -71,7 +71,7 @@ void main() {
       expect(
         () => resolveDeploymentApiUrl('production', envApiUrl: _lan),
         throwsA(isA<StateError>()
-            .having((e) => e.message, 'message', contains('ADDRESSIQ_API_URL'))
+            .having((e) => e.message, 'message', contains('ADDRESSIQ_DEV_API_URL'))
             .having((e) => e.message, 'message', contains('production'))),
       );
     });

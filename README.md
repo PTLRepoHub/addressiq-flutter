@@ -201,7 +201,7 @@ config.resolvedCdnUrl;    // CDN host — the widget is loaded from it, see belo
 CDN-first, integrity-pinned, bundle as the fallback
 (`lib/src/ui/widget_html.dart:96-115`):
 
-1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_WIDGET_URL`
+1. **Widget URL override** — `config.widgetUrl`, or the `ADDRESSIQ_DEV_WIDGET_URL`
    dart-define (the field wins). Wins over everything below, but **only in
    `development`** — supplied with any other deployment it throws a `StateError`
    rather than being silently dropped. It is injected *without* an `integrity`
@@ -241,17 +241,17 @@ flutter run --dart-define-from-file=.env
 
 ```sh
 flutter run \
-  --dart-define=ADDRESSIQ_API_URL=http://192.168.1.5:4000 \
-  --dart-define=ADDRESSIQ_GOOGLE_MAPS_KEY=AIza…
+  --dart-define=ADDRESSIQ_DEV_API_URL=http://192.168.1.5:4000 \
+  --dart-define=ADDRESSIQ_DEV_GOOGLE_MAPS_KEY=AIza…
 ```
 
 | Variable | Overrides | Unset → |
 |---|---|---|
-| `ADDRESSIQ_API_URL` | `resolvedApiUrl` | the `development` literal |
-| `ADDRESSIQ_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
-| `ADDRESSIQ_CDN_URL` | `resolvedCdnUrl` | the `development` literal |
-| `ADDRESSIQ_GOOGLE_MAPS_KEY` | the widget's Maps key | the widget provisions its own |
-| `ADDRESSIQ_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
+| `ADDRESSIQ_DEV_API_URL` | `resolvedApiUrl` | the `development` literal |
+| `ADDRESSIQ_DEV_INGEST_URL` | `resolvedIngestUrl` | the `development` literal |
+| `ADDRESSIQ_DEV_CDN_URL` | `resolvedCdnUrl` | the `development` literal |
+| `ADDRESSIQ_DEV_GOOGLE_MAPS_KEY` | the widget's Maps key | the widget provisions its own |
+| `ADDRESSIQ_DEV_WIDGET_URL` | the widget bundle | CDN, then the vendored asset |
 
 Each is independent — overriding the API host does not drag the others along.
 
@@ -282,9 +282,9 @@ npx serve dist -p 5173
 Then run against it — no re-vendoring, no SDK rebuild:
 
 ```sh
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js   # Android emulator
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://localhost:5173/iqcollect.js  # iOS simulator
-flutter run --dart-define=ADDRESSIQ_WIDGET_URL=http://192.168.1.x:5173/iqcollect.js # physical device (LAN IP)
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://10.0.2.2:5173/iqcollect.js   # Android emulator
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://localhost:5173/iqcollect.js  # iOS simulator
+flutter run --dart-define=ADDRESSIQ_DEV_WIDGET_URL=http://192.168.1.x:5173/iqcollect.js # physical device (LAN IP)
 ```
 
 A `file://` path to the bundle on your Mac will **not** work: the Android emulator is
