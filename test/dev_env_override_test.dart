@@ -1,4 +1,4 @@
-// Development-only build-time overrides for the hosts and the Maps key.
+// Development-only build-time overrides for the hosts.
 //
 // They exist because the `development` hosts are hardcoded literals, and
 // `10.0.2.2` is an Android-EMULATOR alias for the host machine — a physical
@@ -14,7 +14,6 @@ import 'package:addressiq_sdk/src/api/deployment.dart';
 const _lan = 'http://192.168.1.5:4000';
 const _ingest = 'http://192.168.1.5:5000';
 const _cdn = 'http://192.168.1.5:5173';
-const _mapsKey = 'AIzaSyDEV_ONLY_TEST_KEY';
 
 void main() {
   group('host overrides in development', () {
@@ -58,12 +57,10 @@ void main() {
       }
     });
 
-    test('ingest, cdn and maps key are gated identically', () {
+    test('ingest and cdn are gated identically', () {
       expect(() => resolveDeploymentIngestUrl('production', envIngestUrl: _ingest),
           throwsA(isA<StateError>()));
       expect(() => resolveDeploymentCdnUrl('production', envCdnUrl: _cdn),
-          throwsA(isA<StateError>()));
-      expect(() => resolveGoogleMapsKey('production', envGoogleMapsKey: _mapsKey),
           throwsA(isA<StateError>()));
     });
 
@@ -83,25 +80,7 @@ void main() {
         resolveDeploymentApiUrl('production', envApiUrl: ''),
         'https://api.addressiqpro.com',
       );
-      expect(resolveGoogleMapsKey('production', envGoogleMapsKey: ''), isNull);
     });
   });
 
-  group('Maps key override', () {
-    test('is null when unset — the widget provisions its own key', () {
-      // Normal path: the widget fetches a key from GET /api/v1/widget/config and
-      // falls back to the one baked into the bundle. The SDK sends nothing.
-      expect(
-        resolveGoogleMapsKey('development', envGoogleMapsKey: ''),
-        isNull,
-      );
-    });
-
-    test('is honoured in development — for a local backend with no key', () {
-      expect(
-        resolveGoogleMapsKey('development', envGoogleMapsKey: _mapsKey),
-        _mapsKey,
-      );
-    });
-  });
 }

@@ -126,8 +126,7 @@ String resolveDeploymentCdnUrl(
 // Supplied with --dart-define, e.g.
 //
 //     flutter run \
-//       --dart-define=ADDRESSIQ_DEV_API_URL=http://192.168.1.5:4000 \
-//       --dart-define=ADDRESSIQ_DEV_GOOGLE_MAPS_KEY=AIza…
+//       --dart-define=ADDRESSIQ_DEV_API_URL=http://192.168.1.5:4000
 //
 // Empty when unset. These are compile-time constants rather than entries in
 // build_config.dart: `scripts/bake-build-config.sh` rewrites that file wholesale
@@ -147,8 +146,6 @@ String resolveDeploymentCdnUrl(
 const String kEnvApiUrl = String.fromEnvironment('ADDRESSIQ_DEV_API_URL');
 const String kEnvIngestUrl = String.fromEnvironment('ADDRESSIQ_DEV_INGEST_URL');
 const String kEnvCdnUrl = String.fromEnvironment('ADDRESSIQ_DEV_CDN_URL');
-const String kEnvGoogleMapsKey =
-    String.fromEnvironment('ADDRESSIQ_DEV_GOOGLE_MAPS_KEY');
 
 /// Widget bundle URL supplied at build time. See [resolveWidgetUrl].
 const String kEnvWidgetUrl = String.fromEnvironment('ADDRESSIQ_DEV_WIDGET_URL');
@@ -171,22 +168,6 @@ String? _devOverride(String deployment, String env, String varName) {
   }
   return env;
 }
-
-/// The Google Maps key supplied at build time, or null when unset.
-///
-/// Development only. The key is normally **platform-provisioned**: the widget
-/// fetches it from `GET /api/v1/widget/config`, falling back to the key baked
-/// into the vendored bundle. This override exists for the case that breaks —
-/// a local backend with no Maps key configured — and takes precedence over both,
-/// so it is useful precisely when the backend cannot help.
-///
-/// It is deliberately NOT a field on [AddressIQConfig]: integrators do not pass a
-/// Maps key, and this must not become a partner-facing knob.
-String? resolveGoogleMapsKey(
-  String deployment, {
-  String envGoogleMapsKey = kEnvGoogleMapsKey,
-}) =>
-    _devOverride(deployment, envGoogleMapsKey, 'ADDRESSIQ_DEV_GOOGLE_MAPS_KEY');
 
 /// Message for the [StateError] thrown by [resolveWidgetUrl] outside development.
 String widgetUrlNotDevelopmentMessage(String deployment) =>
