@@ -11,8 +11,13 @@
 // the environment — `.widget-version` and `.widget-integrity`, written by the
 // widget-fanout workflow in addressiq-web on every web release alongside the
 // vendored assets/iqcollect.js. They pin the CDN copy of the widget
-// (`{cdn}/v{version}/iqcollect.js` + its SRI hash). When the files are absent
-// both constants bake to '' and the SDK simply inlines the bundled widget.
+// (`{cdn}/v{version}/iqcollect.js` + its SRI hash).
+//
+// These are NOT allowed to be empty any more. The SDK no longer vendors a widget
+// bundle, so the SRI-pinned CDN copy is the ONLY source — an empty pin means the
+// widget cannot load at all. The checked-in values below are the currently
+// published pin, so a source consumer (pub ships source) works out of the box, and
+// `bake-build-config.sh --strict` now REQUIRES both at release.
 //
 // The checked-in values below are the safe public defaults, so a local
 // `flutter analyze`, the test suite and a dry-run publish resolve real hosts
@@ -23,7 +28,7 @@
 //
 // `development` is deliberately NOT baked from CI: it points at the host
 // machine's backend, so it is a local-only concern and stays a compile-time
-// literal in `lib/src/api/environment.dart`. Never ship a build configured for
+// literal in `lib/src/api/deployment.dart`. Never ship a build configured for
 // `development`.
 const String kStagingApiUrl = 'https://api-staging.addressiqpro.com';
 const String kStagingIngestUrl = 'https://ingest-api-staging.addressiqpro.com';
@@ -35,8 +40,9 @@ const String kProdCdnUrl = 'https://cdn.addressiqpro.com';
 
 /// Version of the widget published to the CDN, WITHOUT the leading `v`
 /// (e.g. `0.4.0`). Baked from the `.widget-version` file; `''` when absent.
-const String kWidgetVersion = '';
+const String kWidgetVersion = '0.5.3';
 
 /// Subresource-Integrity hash of `{cdn}/v$kWidgetVersion/iqcollect.js`
 /// (e.g. `sha384-…`). Baked from the `.widget-integrity` file; `''` when absent.
-const String kWidgetIntegrity = '';
+const String kWidgetIntegrity =
+    'sha384-wUErWmll1WWgesjXvSN93KLxHTDLNXdZ4FMR9nT2tQ7tpdBdEuQCDMkHgdssRvkb';

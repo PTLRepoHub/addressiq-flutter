@@ -8,8 +8,8 @@ import 'package:addressiq_sdk/addressiq.dart';
 
 /// The credentials/identity captured on the Login screen.
 class SessionData {
-  /// One of the SDK environments: 'staging' | 'production' | 'development'.
-  final String environment;
+  /// Which AddressIQ deployment (hosts): 'staging' | 'production' | 'development'.
+  final String deployment;
   final String appUserId;
   final String? firstName;
   final String? lastName;
@@ -17,7 +17,7 @@ class SessionData {
   final String? phone;
 
   const SessionData({
-    required this.environment,
+    required this.deployment,
     required this.appUserId,
     this.firstName,
     this.lastName,
@@ -71,12 +71,13 @@ class AppStore {
   void clear() => addresses.clear();
 }
 
-/// API key per environment. In the RN example this comes from a
+/// API key per deployment. The key ALSO decides sandbox-vs-production tenant
+/// mode server-side (aiq_test_… vs aiq_live_…) — that is not this axis.
 /// `credentials.json`; here it falls back to a `--dart-define` and a
 /// sensible staging default so the demo runs out of the box.
 const _apiKeyOverride = String.fromEnvironment('API_KEY', defaultValue: '');
 
-String apiKeyForEnvironment(String environment) {
+String apiKeyForDeployment(String deployment) {
   if (_apiKeyOverride.isNotEmpty) return _apiKeyOverride;
   // Demo seed keys — swap via --dart-define=API_KEY=... for real backends.
   return 'aiq_test_demo_bank_seed01';
@@ -87,5 +88,5 @@ String apiKeyForEnvironment(String environment) {
 const sessionTokenForCollect =
     String.fromEnvironment('SESSION_TOKEN', defaultValue: 'sdk_widget_session_demo');
 
-/// `sandbox` is a deprecated alias for `staging` and is deliberately not offered here.
-const sdkEnvironments = <String>['staging', 'production', 'development'];
+/// 'sandbox' is NOT offered: it is a tenant mode chosen by the API key, not a deployment.
+const sdkDeployments = <String>['staging', 'production', 'development'];

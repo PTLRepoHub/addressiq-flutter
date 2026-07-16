@@ -12,7 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../api/addressiq_api.dart';
-import '../api/environment.dart';
+import '../api/deployment.dart';
 import '../data/api_client.dart';
 import '../data/verification_repository.dart';
 import '../domain/entities.dart';
@@ -25,32 +25,34 @@ class AddressIQConfig {
   /// Tenant API key from the AddressIQ dashboard.
   final String apiKey;
 
-  /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
-  /// `'staging'`, or `'development'` (local backend on 4000). `'sandbox'` is a
-  /// deprecated alias for `'staging'` and resolves identically.
-  final String environment;
+  /// Which AddressIQ DEPLOYMENT (i.e. which hosts) to talk to. Drives
+  /// [resolvedApiUrl]. One of `'production'`, `'staging'`, or `'development'`
+  /// (local backend on 4000). An unrecognised value throws.
+  ///
+  /// Orthogonal to sandbox-vs-production, which is a property of [apiKey] and is
+  /// resolved server-side. `'sandbox'` is not a deployment and is rejected here.
+  final String deployment;
 
   const AddressIQConfig({
     required this.apiKey,
-    this.environment = 'production',
+    this.deployment = 'production',
   });
 
-  /// Effective API URL, resolved from [environment]. Integrators never
+  /// Effective API URL, resolved from [deployment]. Integrators never
   /// pass a URL — the SDK owns host resolution.
-  String get resolvedApiUrl => resolveEnvironmentApiUrl(environment);
+  String get resolvedApiUrl => resolveDeploymentApiUrl(deployment);
 
-  /// Effective ingest URL, resolved from [environment]. Transit events are
+  /// Effective ingest URL, resolved from [deployment]. Transit events are
   /// posted here rather than to [resolvedApiUrl].
-  String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
+  String get resolvedIngestUrl => resolveDeploymentIngestUrl(deployment);
 
-  /// Effective CDN base URL for this environment.
+  /// Effective CDN base URL for this deployment.
   ///
-  /// Nothing in the SDK fetches from it today — the verify widget ships bundled
-  /// (`assets/iqcollect.js`) and is injected inline, and it deliberately never
-  /// falls back to a remote script (see `AddressIQVerify`). This is exposed so
-  /// hosts and future asset loading resolve the same per-environment host the
-  /// web SDK publishes to.
-  String get resolvedCdnUrl => resolveEnvironmentCdnUrl(environment);
+  /// The verify widget is loaded from here, and ONLY from here: the SDK ships no
+  /// bundled copy, so the SRI-pinned `{cdn}/v{x.y.z}/iqcollect.js` is the single
+  /// source (see `AddressIQVerify`). Exposed so hosts resolve the same
+  /// per-deployment host the web SDK publishes to.
+  String get resolvedCdnUrl => resolveDeploymentCdnUrl(deployment);
 }
 
 class AddressIQException implements Exception {
@@ -90,7 +92,7 @@ class AddressIQ {
       throw AddressIQException('INVALID_CONFIG', 'apiKey is required');
     }
     if (config.resolvedApiUrl.isEmpty) {
-      throw AddressIQException('INVALID_CONFIG', 'apiUrl resolved to empty string (check environment)');
+      throw AddressIQException('INVALID_CONFIG', 'apiUrl resolved to empty string (check deployment)');
     }
     _config = config;
     _repository = VerificationRepository(

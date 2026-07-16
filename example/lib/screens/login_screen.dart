@@ -1,4 +1,4 @@
-// P1-3 — Login: environment picker + appUserId (+ profile fields) →
+// P1-3 — Login: deployment picker + appUserId (+ profile fields) →
 // produces a SessionData the hub uses to initialize + setUser.
 
 import 'package:flutter/material.dart';
@@ -14,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String _environment = 'staging';
+  String _deployment = 'development';
   final _appUserId = TextEditingController(text: 'cust_sample_001');
   final _firstName = TextEditingController(text: 'Demo');
   final _lastName = TextEditingController(text: 'User');
@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final id = _appUserId.text.trim();
     if (id.isEmpty) return;
     widget.onLogin(SessionData(
-      environment: _environment,
+      deployment: _deployment,
       appUserId: id,
       firstName: _firstName.text.trim().isEmpty ? null : _firstName.text.trim(),
       lastName: _lastName.text.trim().isEmpty ? null : _lastName.text.trim(),
@@ -57,16 +57,16 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 20),
-          const Text('Environment', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          const Text('Deployment', style: TextStyle(color: Colors.grey, fontSize: 12)),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: _environment,
+            value: _deployment,
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: [
-              for (final env in sdkEnvironments)
+              for (final env in sdkDeployments)
                 DropdownMenuItem(value: env, child: Text(env)),
             ],
-            onChanged: (v) => setState(() => _environment = v ?? _environment),
+            onChanged: (v) => setState(() => _deployment = v ?? _deployment),
           ),
           const SizedBox(height: 16),
           _field('App User ID', _appUserId),

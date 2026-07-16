@@ -1,44 +1,62 @@
-import 'environment.dart';
+import 'deployment.dart';
 
 class AddressIQConfig {
+  /// Tenant API key. This — not [deployment] — decides whether the tenant is in
+  /// SANDBOX or PRODUCTION mode: `aiq_test_…` resolves to a sandbox App row
+  /// server-side, `aiq_live_…` to a production one. The SDK never sends a mode.
   final String apiKey;
-  /// Target environment. Drives [resolvedApiUrl]. One of `'production'`,
-  /// `'staging'`, or `'development'` (local backend on 4000). `'sandbox'` is a
-  /// deprecated alias for `'staging'` and resolves identically.
-  final String environment;
+
+  /// Which AddressIQ DEPLOYMENT (i.e. which hosts) to talk to. Drives
+  /// [resolvedApiUrl]. One of `'production'`, `'staging'`, or `'development'`
+  /// (local backend on 4000). An unrecognised value throws.
+  ///
+  /// Orthogonal to sandbox-vs-production, which lives in [apiKey]. `'sandbox'`
+  /// was previously accepted here as an alias for `'staging'`; it is not a
+  /// deployment and is now rejected.
+  final String deployment;
   final String sessionToken;
   /// Stable end-user identifier passed to the widget. Falls back to the
   /// session token when omitted (the token already binds identity server-side).
   final String? appUserId;
   /// Business display name shown on the widget's intro/consent screens.
   final String? businessName;
-  /// Override the hosted widget bundle URL (for local development).
+  /// Override the hosted widget bundle URL. DEVELOPMENT ONLY — supplying it with
+  /// any other [deployment] throws (see [resolvedWidgetUrl]). May also be supplied
+  /// at build time via `--dart-define=ADDRESSIQ_WIDGET_URL=…`; this field wins.
   final String? widgetUrl;
 
   const AddressIQConfig({
     required this.apiKey,
     required this.sessionToken,
-    this.environment = 'production',
+    this.deployment = 'production',
     this.appUserId,
     this.businessName,
     this.widgetUrl,
   });
 
-  /// Effective API URL, resolved from [environment]. Integrators never
+  /// Effective API URL, resolved from [deployment]. Integrators never
   /// pass a URL — the SDK owns host resolution.
-  String get resolvedApiUrl => resolveEnvironmentApiUrl(environment);
+  String get resolvedApiUrl => resolveDeploymentApiUrl(deployment);
 
-  /// Effective ingest URL, resolved from [environment]. Transit events are
+  /// Effective ingest URL, resolved from [deployment]. Transit events are
   /// posted here rather than to [resolvedApiUrl].
-  String get resolvedIngestUrl => resolveEnvironmentIngestUrl(environment);
+  String get resolvedIngestUrl => resolveDeploymentIngestUrl(deployment);
 
-  /// Effective CDN base URL for this environment.
+  /// Effective CDN base URL for this deployment.
   ///
   /// The verify WebView loads the widget from here, CDN-first: the immutable
-  /// `{cdn}/v{x.y.z}/iqcollect.js` with a Subresource-Integrity pin, falling
-  /// back to the bundled `assets/iqcollect.js` on outage/offline/SRI failure
+  /// `{cdn}/v{x.y.z}/iqcollect.js` with a Subresource-Integrity pin. This is the
+  /// ONLY widget source — the SDK ships no bundled copy, so an outage, an offline
+  /// device, or an SRI mismatch is a hard failure reported as WIDGET_LOAD_FAILED
   /// (see `lib/src/ui/widget_html.dart`).
-  String get resolvedCdnUrl => resolveEnvironmentCdnUrl(environment);
+  String get resolvedCdnUrl => resolveDeploymentCdnUrl(deployment);
+
+  /// Effective widget bundle override, or null when there is none. Combines
+  /// [widgetUrl] with the `ADDRESSIQ_WIDGET_URL` dart-define ([widgetUrl] wins).
+  ///
+  /// Throws [StateError] when an override is supplied outside `development` —
+  /// it is injected without an SRI pin, so it must never reach a shipped build.
+  String? get resolvedWidgetUrl => resolveWidgetUrl(deployment, widgetUrl);
 }
 
 class AddressData {
