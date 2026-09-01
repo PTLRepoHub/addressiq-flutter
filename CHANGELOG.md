@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.12.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.11.0...v0.12.0) (2026-09-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Deployment is split from tenant mode and the widget URL override is dev-gated. Integrators configuring the old combined field must update.
+* The SDK no longer ships a vendored `iqcollect.js`. The widget is loaded from the CDN at runtime against a pinned version and SRI hash.
+
+### Features
+
+* **config:** split deployment from tenant mode, and dev-gate the widget URL override
+* **config:** read dev overrides from a gitignored `.env` file
+* **widget:** drop the vendored bundle; the pinned CDN copy is the only source
+* **signals:** collect device intelligence and attach it as `rawPayload`. The SDK sent none, so EMULATOR_DETECTED, MOCK_LOCATION and the install-id blacklist were unreachable on Flutter. Root/jailbreak and spoofing-app detection remain unimplemented — they need platform code a pure Dart package cannot host, and the section is omitted rather than reported as `false`.
+
+### Bug Fixes
+
+* **telemetry:** report the real platform. `deviceOs` was hardcoded to `ANDROID`, so every event from a Flutter app on iOS was mislabelled and nothing downstream could contradict it.
+* **example:** default the deployment picker to development
+
 ## [0.11.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.10.1...v0.11.0) (2026-07-12)
 
 
