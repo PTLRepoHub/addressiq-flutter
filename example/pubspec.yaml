@@ -17,6 +17,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Runs a test ON a device rather than in the Dart VM. The signal collector
+  # asks the platform whether it is physical hardware, which a host-side test
+  # cannot answer — and "cannot answer" reported as a clean device is exactly
+  # how two Android signals stayed silently broken.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^4.0.0
 
 flutter:
