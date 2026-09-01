@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../data/device_signals.dart';
 import 'package:geolocator/geolocator.dart';
 import '../api/addressiq_api.dart';
 import '../api/models.dart';
@@ -105,12 +106,19 @@ class LocationCollector {
   void optIn() => _optedOut = false;
 
   Future<void> _processPosition(Position pos, String eventType) async {
+    final signals = await AddressIQDeviceSignals.collect();
     final event = LocationEvent(
       lat: pos.latitude,
       lon: pos.longitude,
       accuracyM: pos.accuracy,
       deviceTs: DateTime.now().toUtc().toIso8601String(),
       eventType: eventType,
+      rawPayload: {
+        ...signals,
+        // Per-fix, not per-device: geolocator reports it on the individual
+        // reading, so it cannot come from the cached collector.
+        'location': {'isMocked': pos.isMocked},
+      },
     );
     await AddressIQStorage.pushEvents([event]);
   }
@@ -129,6 +137,10 @@ class LocationCollector {
         accuracyM: (json['accuracyM'] as num).toDouble(),
         deviceTs: json['deviceTs'] as String,
         eventType: json['eventType'] as String? ?? 'BACKGROUND_CHECK',
+        // Events round-trip through storage as JSON and are rebuilt here field
+        // by field, so anything not restored is silently dropped on flush —
+        // which would leave the signals collected but never sent.
+        rawPayload: json['rawPayload'] as Map<String, dynamic>?,
       )).toList();
 
       await api.sendEvents(locationId, events);

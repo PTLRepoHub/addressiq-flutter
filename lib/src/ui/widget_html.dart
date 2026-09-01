@@ -82,7 +82,12 @@ String buildWidgetHtml({
   // fallback name (with the app's theme colour) when the integrator set one.
   final cfgMap = <String, dynamic>{
     'apiKey': config.apiKey,
-    'apiUrl': config.resolvedApiUrl,
+    // The widget resolves its OWN API/ingest hosts from this enum
+    // (`resolveEnvironmentUrls`) and never reads a URL out of its config.
+    // Omitting it defaults the widget to production, which is how a staging
+    // build loaded the staging bundle from the staging CDN and then called the
+    // PRODUCTION API.
+    'environment': config.deployment,
     'appUserId': config.appUserId ?? config.sessionToken,
     // Drives the platform-specific "Location permission" Settings screen.
     'platform': platform,

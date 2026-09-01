@@ -115,3 +115,229 @@ jobs:
           else
             dart pub publish --dry-run
           fi
+
+  # ---------------------------------------------------------------------------
+  # Demo app builds — an installable APK on the release page, and the iOS build
+  # on TestFlight.
+  #
+  # example/android and example/ios are gitignored (they are `flutter create`
+  # output, not source), so both jobs regenerate the platform folders before
+  # building. Everything under example/lib and the local SDK at ../ is real.
+  #
+  # Secrets (iOS only): APPSTORE_KEY_ID, APPSTORE_ISSUER_ID, APPSTORE_KEY_P8,
+  # APPLE_TEAM_ID. Absent → unsigned build, no TestFlight upload, release still
+  # gets an artifact.
+  # Variables: IOS_DEMO_BUNDLE_ID, ANDROID_DEMO_APPLICATION_ID.
+  # ---------------------------------------------------------------------------
+  demo-android:
+    name: Demo APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Bake build config (staging + production)
+        env:
+          STAGING_ADDRESSIQ_API_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_API_BASE_URL }}
+          STAGING_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_INGEST_BASE_URL }}
+          STAGING_ADDRESSIQ_CDN_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_CDN_BASE_URL }}
+          PROD_ADDRESSIQ_API_BASE_URL: ${{ vars.PROD_ADDRESSIQ_API_BASE_URL }}
+          PROD_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.PROD_ADDRESSIQ_INGEST_BASE_URL }}
+          PROD_ADDRESSIQ_CDN_BASE_URL: ${{ vars.PROD_ADDRESSIQ_CDN_BASE_URL }}
+        run: scripts/bake-build-config.sh --strict
+
+      - name: Build APK
+        id: apk
+        working-directory: example
+        env:
+          # `com.addressiqpro.flutterdemo` by default; override per environment.
+          APP_ID: ${{ vars.ANDROID_DEMO_APPLICATION_ID || 'com.addressiqpro.flutterdemo' }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then V="${GITHUB_REF_NAME#v}"; else V="0.0.0"; fi
+          # example/android is gitignored — regenerate it, then pin the
+          # applicationId explicitly. (`--org` alone would derive it from the
+          # pubspec name, which is not what partners install.)
+          flutter create --platforms=android .
+          GRADLE=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
+          sed -i.bak -E "s/(applicationId|namespace)([ =]+)\"[^\"]*\"/\1\2\"${APP_ID}\"/" "$GRADLE"
+          grep -E "applicationId|namespace" "$GRADLE"
+          flutter pub get
+          # The generated release buildType signs with the debug keystore, so
+          # this APK installs. A partner-facing signed build would need a real
+          # keystore wired into example/android/app/build.gradle.kts.
+          flutter build apk --release --build-name "$V" --build-number "${{ github.run_number }}"
+          OUT="../addressiq-flutter-example-${V}.apk"
+          mv build/app/outputs/flutter-apk/app-release.apk "$OUT"
+          echo "artifact=addressiq-flutter-example-${V}.apk" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ${{ steps.apk.outputs.artifact }}
+
+      - name: Attach to the GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" "${{ steps.apk.outputs.artifact }}" --clobber
+
+  demo-ios:
+    name: Demo app · TestFlight
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      BUNDLE_ID: ${{ vars.IOS_DEMO_BUNDLE_ID || 'com.addressiqpro.flutterdemo' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Bake build config (staging + production)
+        env:
+          STAGING_ADDRESSIQ_API_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_API_BASE_URL }}
+          STAGING_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_INGEST_BASE_URL }}
+          STAGING_ADDRESSIQ_CDN_BASE_URL: ${{ vars.STAGING_ADDRESSIQ_CDN_BASE_URL }}
+          PROD_ADDRESSIQ_API_BASE_URL: ${{ vars.PROD_ADDRESSIQ_API_BASE_URL }}
+          PROD_ADDRESSIQ_INGEST_BASE_URL: ${{ vars.PROD_ADDRESSIQ_INGEST_BASE_URL }}
+          PROD_ADDRESSIQ_CDN_BASE_URL: ${{ vars.PROD_ADDRESSIQ_CDN_BASE_URL }}
+        run: scripts/bake-build-config.sh --strict
+
+      - name: Install the App Store Connect API key
+        id: asc
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_P8: ${{ secrets.APPSTORE_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPSTORE_KEY_ID:-}" ] || [ -z "${APPSTORE_ISSUER_ID:-}" ] \
+             || [ -z "${APPSTORE_KEY_P8:-}" ] || [ -z "${APPLE_TEAM_ID:-}" ]; then
+            echo "::warning::App Store Connect secrets not configured — building unsigned, skipping TestFlight."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p ~/private_keys
+          printf '%s' "$APPSTORE_KEY_P8" > ~/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        id: build
+        working-directory: example
+        env:
+          SIGNED: ${{ steps.asc.outputs.signed }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then V="${GITHUB_REF_NAME#v}"; else V="0.0.0"; fi
+
+          # example/ios is gitignored — regenerate it, then pin the bundle id.
+          # The RunnerTests target must keep a DIFFERENT id or App Store
+          # Connect rejects the archive, hence the exclusion.
+          flutter create --platforms=ios .
+          PBX=ios/Runner.xcodeproj/project.pbxproj
+          sed -i.bak -E "/RunnerTests/! s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/" "$PBX"
+          sed -i.bak -E "/RunnerTests/ s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}.RunnerTests;/" "$PBX"
+
+          # `flutter create` scaffolds a 13.0 floor, but workmanager's Apple
+          # package requires 14.0 — a fresh scaffold does NOT build for device
+          # without this ("requires minimum platform version 14.0 for the iOS
+          # platform, but this target supports 13.0"). The SDK itself still
+          # supports iOS 13; this raises only the demo app.
+          sed -i.bak -E "s/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]+;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g" "$PBX"
+
+          flutter pub get
+          # The Podfile only exists once pub get has resolved the plugins, and
+          # on a Swift-Package-Manager-only plugin set it may not exist at all.
+          [ -f ios/Podfile ] && sed -i.bak -E "s/^# *platform :ios.*/platform :ios, '14.0'/" ios/Podfile || true
+
+          if [ "$SIGNED" != "true" ]; then
+            flutter build ios --release --no-codesign \
+              --build-name "$V" --build-number "${{ github.run_number }}"
+            APP=$(find build/ios/iphoneos -maxdepth 1 -name '*.app' | head -1)
+            OUT="$PWD/../addressiq-flutter-example-${V}-unsigned.zip"
+            ( cd "$(dirname "$APP")" && zip -qry "$OUT" "$(basename "$APP")" )
+            echo "artifact=addressiq-flutter-example-${V}-unsigned.zip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # `flutter build ipa` drives xcodebuild itself and gives us no way to
+          # hand it the App Store Connect key, so automatic provisioning would
+          # fail on a runner with no Apple ID. Instead: let Flutter produce the
+          # engine + Dart artifacts and the Xcode config, then archive the
+          # generated workspace ourselves with the key attached.
+          flutter build ios --release --config-only \
+            --build-name "$V" --build-number "${{ github.run_number }}"
+          # SPM-only plugin sets produce no Podfile; nothing to install then.
+          [ -f ios/Podfile ] && ( cd ios && pod install ) || true
+
+          KEY=~/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Runner.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
+
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0"><dict>' \
+            '<key>method</key><string>app-store-connect</string>' \
+            "<key>teamID</key><string>${APPLE_TEAM_ID}</string>" \
+            '<key>destination</key><string>export</string>' \
+            '<key>signingStyle</key><string>automatic</string>' \
+            '<key>uploadSymbols</key><true/>' \
+            '</dict></plist>' > ExportOptions.plist
+
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/ipa \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+
+          IPA=$(find build/ipa -name '*.ipa' | head -1)
+          mv "$IPA" "../addressiq-flutter-example-${V}.ipa"
+          echo "artifact=addressiq-flutter-example-${V}.ipa" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to TestFlight
+        if: steps.asc.outputs.signed == 'true'
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --upload-app -t ios \
+            -f "${{ steps.build.outputs.artifact }}" \
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-demo
+          path: ${{ steps.build.outputs.artifact }}
+
+      - name: Attach to the GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" "${{ steps.build.outputs.artifact }}" --clobber

@@ -55,6 +55,28 @@ void main() {
       expect(html, isNot(contains('10.0.2.2:4000/v0.4.0')));
     });
 
+    // The widget resolves its own API/ingest hosts from an ENVIRONMENT NAME
+    // (`resolveEnvironmentUrls`); it never reads a URL out of its config, and an
+    // absent `environment` silently defaults it to production. So a staging
+    // build used to load the staging bundle off the staging CDN and then call
+    // the PRODUCTION API — the deployment honoured everywhere except the
+    // requests that actually carry data.
+    test('tells the widget which environment to call', () {
+      for (final deployment in ['staging', 'production', 'development']) {
+        final config = AddressIQConfig(
+            apiKey: 'aiq_test', sessionToken: 'sess_test', deployment: deployment);
+        expect(_html(config), contains('"environment":"$deployment"'));
+      }
+    });
+
+    test('never hands the widget a host URL — it takes an enum, not a URL', () {
+      // A URL here is silently ignored by the widget, which is exactly how the
+      // production-API-from-staging bug stayed invisible.
+      const config = AddressIQConfig(
+          apiKey: 'aiq_test', sessionToken: 'sess_test', deployment: 'staging');
+      expect(_html(config), isNot(contains('"apiUrl"')));
+    });
+
     test('ships no bundled widget and no fallback machinery', () {
       const config = AddressIQConfig(
           apiKey: 'aiq_test', sessionToken: 'sess_test', deployment: 'production');

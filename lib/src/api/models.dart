@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'deployment.dart';
 
 class AddressIQConfig {
@@ -180,6 +181,11 @@ class LocationEvent {
   final int? batteryLevel;
   final bool? isCharging;
 
+  /// Device intelligence — see [AddressIQDeviceSignals]. The engine reads
+  /// `device.isEmulator`, `location.isMocked` and `fingerprint.installId` out
+  /// of this; without it every fraud check is unreachable for Flutter apps.
+  final Map<String, dynamic>? rawPayload;
+
   const LocationEvent({
     required this.lat,
     required this.lon,
@@ -189,6 +195,7 @@ class LocationEvent {
     this.activityType,
     this.batteryLevel,
     this.isCharging,
+    this.rawPayload,
   });
 
   Map<String, dynamic> toJson() => {
@@ -200,7 +207,18 @@ class LocationEvent {
     'activityType': activityType,
     'batteryLevel': batteryLevel,
     'isCharging': isCharging,
-    'deviceOs': 'ANDROID', // Detected at runtime
-    'sdkVersion': '0.3.0',
+    // Actually detected, rather than assumed. This was hardcoded to 'ANDROID'
+    // behind a comment claiming otherwise, so every event from a Flutter app on
+    // iOS was reported as Android — silently mislabelling the whole platform in
+    // telemetry, since nothing downstream can contradict it.
+    'deviceOs': Platform.isIOS ? 'IOS' : 'ANDROID',
+    // Keep the `flutter/` prefix when bumping. It is the only thing that
+    // identifies which SDK produced an event — deviceOs is IOS/ANDROID here
+    // too, and a bare semver collides with the native Android SDK, which also
+    // shipped 0.3.0. Matches the `iqidem_flutter_*` vocabulary, contract §6.6.
+    'sdkVersion': 'flutter/0.11.0',
+    // Omitted entirely when empty rather than sent as {}: the engine treats an
+    // absent section as "not observed", which is the honest reading.
+    if (rawPayload != null && rawPayload!.isNotEmpty) 'rawPayload': rawPayload,
   };
 }

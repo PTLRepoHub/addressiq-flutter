@@ -23,11 +23,14 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.2.0
   geolocator: ^12.0.0
+  # Emulator detection (`isPhysicalDevice`) for the device-intelligence section
+  # the scoring engine reads — see lib/src/data/device_signals.dart.
+  device_info_plus: ^10.1.0
   image_picker: ^1.0.0
   # Collect UI map flow: interactive Google map (Maps JS) + Street View render
   # in a WebView — dependency-free vs the native Google Maps SDK.
   webview_flutter: ^4.4.0
-  workmanager: ^0.5.2
+  workmanager: ^0.10.7
 
 dev_dependencies:
   flutter_test:
