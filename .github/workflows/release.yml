@@ -167,8 +167,20 @@ jobs:
           # applicationId explicitly. (`--org` alone would derive it from the
           # pubspec name, which is not what partners install.)
           flutter create --platforms=android .
-          GRADLE=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
-          sed -i.bak -E "s/(applicationId|namespace)([ =]+)\"[^\"]*\"/\1\2\"${APP_ID}\"/" "$GRADLE"
+          # NOT `ls a b | head -1`: `ls` exits non-zero when either operand is
+          # missing, and under `set -o pipefail` that aborts the step before
+          # anything is built. Only one of these files ever exists, so that form
+          # failed every run with exit 2.
+          if [ -f android/app/build.gradle.kts ]; then
+            GRADLE=android/app/build.gradle.kts
+          else
+            GRADLE=android/app/build.gradle
+          fi
+          # applicationId ONLY — patching `namespace` too points the manifest's
+          # relative `.MainActivity` at a package that does not exist (the class
+          # stays in com.example.addressiq_example). The APK then builds and
+          # installs, and dies on launch with ClassNotFoundException.
+          sed -i.bak -E "s/(applicationId)([ =]+)\"[^\"]*\"/\1\2\"${APP_ID}\"/" "$GRADLE"
           grep -E "applicationId|namespace" "$GRADLE"
           flutter pub get
           # The generated release buildType signs with the debug keystore, so
