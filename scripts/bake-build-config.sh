@@ -36,6 +36,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="lib/src/generated/build_config.dart"
 
+# SDK version, from pubspec.yaml — the file release-please bumps. Baked rather
+# than hardcoded in Dart so it cannot drift from the published package: the
+# x-sdk-version header sat at '0.3.0' while the package shipped 0.12.0.
+V_SDK_VERSION="$(sed -n 's/^version: *//p' pubspec.yaml | head -1 | tr -d " \t\r\n")"
+
 STRICT=0
 [ "${1:-}" = "--strict" ] && STRICT=1
 
@@ -133,6 +138,10 @@ const String kWidgetVersion = '$WIDGET_VERSION';
 /// Subresource-Integrity hash of \`{cdn}/v\$kWidgetVersion/iqcollect.js\`
 /// (e.g. \`sha384-…\`). Baked from the \`.widget-integrity\` file; \`''\` when absent.
 const String kWidgetIntegrity = '$WIDGET_INTEGRITY';
+
+/// This SDK's version, baked from \`pubspec.yaml\`. Sent as \`x-sdk-version\` and
+/// used in the telemetry envelope, so neither can drift from the release.
+const String kSdkVersion = '$V_SDK_VERSION';
 EOF
 
 echo "[bake] wrote $OUT"

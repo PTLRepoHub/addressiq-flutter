@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'deployment.dart';
+import '../generated/build_config.dart';
 
 class AddressIQConfig {
   /// Tenant API key. This — not [deployment] — decides whether the tenant is in
@@ -216,7 +217,7 @@ class LocationEvent {
     // identifies which SDK produced an event — deviceOs is IOS/ANDROID here
     // too, and a bare semver collides with the native Android SDK, which also
     // shipped 0.3.0. Matches the `iqidem_flutter_*` vocabulary, contract §6.6.
-    'sdkVersion': 'flutter/0.12.0',
+    'sdkVersion': 'flutter/$kSdkVersion',
     // Omitted entirely when empty rather than sent as {}: the engine treats an
     // absent section as "not observed", which is the honest reading.
     if (rawPayload != null && rawPayload!.isNotEmpty) 'rawPayload': rawPayload,

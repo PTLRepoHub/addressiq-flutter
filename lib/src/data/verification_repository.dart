@@ -10,7 +10,7 @@ class VerificationRepository {
 
   Future<Map<String, dynamic>> startPhysical(StartPhysicalArgs args) =>
       client.post(
-        '/api/v1/locations/${args.locationCode}/verifications/physical',
+        '/api/v1/locations/${Uri.encodeComponent(args.locationCode)}/verifications/physical',
         {
           'provider': args.provider,
           if (args.agentId != null) 'agentId': args.agentId,
@@ -23,7 +23,7 @@ class VerificationRepository {
 
   Future<Map<String, dynamic>> startDigital(StartVerificationArgs args) =>
       client.post(
-        '/api/v1/locations/${args.locationCode}/verifications/digital',
+        '/api/v1/locations/${Uri.encodeComponent(args.locationCode)}/verifications/digital',
         {
           'digitalProvider': args.digitalProvider ?? 'internal_ai',
           if (args.metadata != null) 'metadata': args.metadata,
@@ -34,7 +34,7 @@ class VerificationRepository {
 
   Future<Map<String, dynamic>> startCombined(StartCombinedArgs args) =>
       client.post(
-        '/api/v1/locations/${args.locationCode}/verifications/combined',
+        '/api/v1/locations/${Uri.encodeComponent(args.locationCode)}/verifications/combined',
         {
           'physicalProvider': args.physicalProvider,
           'startDigital': args.startDigital,
@@ -48,13 +48,13 @@ class VerificationRepository {
       );
 
   Future<Map<String, dynamic>> cancel(String code, {String? idempotencyKey}) =>
-      client.post('/api/v1/verifications/$code/cancel', const {}, idempotencyKey: idempotencyKey);
+      client.post('/api/v1/verifications/${Uri.encodeComponent(code)}/cancel', const {}, idempotencyKey: idempotencyKey);
 
   Future<List<Map<String, dynamic>>> listProviders({String? type}) =>
-      client.getList('/api/v1/providers${type != null ? '?type=$type' : ''}');
+      client.getList('/api/v1/providers${type != null ? '?type=${Uri.encodeComponent(type)}' : ''}');
 
   Future<LocationEnvelope> getLocation(String locationCode) async {
-    final raw = await client.get('/api/v1/locations/$locationCode');
+    final raw = await client.get('/api/v1/locations/${Uri.encodeComponent(locationCode)}');
     return LocationEnvelope.fromJson(raw);
   }
 
