@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.12.0...v0.12.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **ci:** the demo APK step could never succeed ([c7a3aba](https://github.com/PTLRepoHub/addressiq-flutter/commit/c7a3abaf5d53e74f6504e64cc99e60bba5d0b3b4))
+* **flutter:** bake the SDK version, unify error handling, encode path segments ([#30](https://github.com/PTLRepoHub/addressiq-flutter/issues/30)) ([2e8b240](https://github.com/PTLRepoHub/addressiq-flutter/commit/2e8b240910852d9a42862cfb25e3debbc4b846ba))
+
 ## [0.12.0](https://github.com/PTLRepoHub/addressiq-flutter/compare/v0.11.0...v0.12.0) (2026-09-01)
 
 
