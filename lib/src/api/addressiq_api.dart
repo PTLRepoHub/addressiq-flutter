@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'models.dart';
+import '../generated/build_config.dart';
 
 class AddressIQApi {
   final String apiUrl;
@@ -21,7 +22,10 @@ class AddressIQApi {
   Map<String, String> get _apiHeaders => {
     'Content-Type': 'application/json',
     'x-api-key': apiKey,
-    'x-sdk-version': '0.3.0',
+    'x-sdk-name': 'addressiq-flutter',
+    // Baked from pubspec.yaml. This was hardcoded '0.3.0' while the package
+    // shipped 0.12.0, so every request misreported the SDK version.
+    'x-sdk-version': kSdkVersion,
   };
 
   Map<String, String> get _sessionHeaders => {
@@ -59,7 +63,7 @@ class AddressIQApi {
   /// Get verification status.
   Future<VerificationStatus> getStatus(String verificationId) async {
     final res = await http.get(
-      Uri.parse('$apiUrl/api/v1/verifications/$verificationId'),
+      Uri.parse('$apiUrl/api/v1/verifications/${Uri.encodeComponent(verificationId)}'),
       headers: _apiHeaders,
     );
     _checkResponse(res);

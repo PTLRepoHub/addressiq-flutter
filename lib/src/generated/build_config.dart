@@ -40,3 +40,7 @@ const String kWidgetVersion = '0.5.3';
 /// Subresource-Integrity hash of `{cdn}/v$kWidgetVersion/iqcollect.js`
 /// (e.g. `sha384-…`). Baked from the `.widget-integrity` file; `''` when absent.
 const String kWidgetIntegrity = 'sha384-wUErWmll1WWgesjXvSN93KLxHTDLNXdZ4FMR9nT2tQ7tpdBdEuQCDMkHgdssRvkb';
+
+/// This SDK's version, baked from `pubspec.yaml`. Sent as `x-sdk-version` and
+/// used in the telemetry envelope, so neither can drift from the release.
+const String kSdkVersion = '0.12.0';
